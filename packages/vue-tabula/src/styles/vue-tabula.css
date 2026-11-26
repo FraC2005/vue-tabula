@@ -139,6 +139,86 @@
     outline-offset: -2px;
   }
 
+  .vt-root {
+    position: relative;
+  }
+
+  .vt-root[data-loading] .vt-body {
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+
+  .vt-loading {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1;
+    overflow: hidden;
+    border-radius: var(--vt-radius) var(--vt-radius) 0 0;
+  }
+
+  .vt-loading-bar {
+    width: 30%;
+    height: 2px;
+    background: var(--vt-primary);
+    animation: vt-loading 1.1s ease-in-out infinite;
+  }
+
+  @keyframes vt-loading {
+    from {
+      transform: translateX(-100%);
+    }
+
+    to {
+      transform: translateX(340%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vt-loading-bar {
+      width: 100%;
+      animation: none;
+      opacity: 0.6;
+    }
+  }
+
+  .vt-error {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    color: var(--destructive, #b91c1c);
+    border-bottom: 1px solid var(--vt-border);
+  }
+
+  .vt-retry {
+    padding: 0.125rem 0.5rem;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid currentcolor;
+    border-radius: calc(var(--vt-radius) - 2px);
+  }
+
+  .vt-retry:focus-visible {
+    outline: 2px solid var(--vt-ring);
+    outline-offset: 2px;
+  }
+
+  .vt-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .vt-select-cell {
     display: flex;
     flex: 0 0 2.5rem;

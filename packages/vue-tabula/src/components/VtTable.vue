@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } 
 import type {
   CellSlotProps,
   ColumnDef,
+  ErrorSlotProps,
   FilterSlotProps,
   FilterValue,
   HeaderSlotProps,
@@ -10,11 +11,19 @@ import type {
   SelectionMode,
   TableClasses,
   TableLabels,
+  TableMode,
+  TableRequest,
   TableState,
 } from '../types.js'
 import { getCellValue, getRowKey } from '../core/accessor.js'
-import { columnFilterIndices, isFilterActive, selectOptions } from '../core/columnFilters.js'
+import {
+  columnFilterIndices,
+  isFilterActive,
+  normalizeOptions,
+  selectOptions,
+} from '../core/columnFilters.js'
 import { createDebouncer } from '../core/debounce.js'
+import { devWarn } from '../core/dev.js'
 import { jsonEqual } from '../core/equal.js'
 import { globalSearchIndices } from '../core/filter.js'
 import { DEFAULT_LABELS } from '../core/labels.js'
@@ -58,6 +67,20 @@ const props = withDefaults(
      * sincrono. Passare `undefined` dopo uno stato riporta la tabella ai valori iniziali.
      */
     state?: TableState
+    /**
+     * `client` (default): la tabella ordina, filtra e pagina `rows`. `server`: mostra `rows` così
+     * come arrivano e chiede i dati al genitore con l'evento `request`.
+     */
+    mode?: TableMode
+    /** Modalità server: numero totale di righe sul server (per la paginazione). `undefined` = non ancora noto. */
+    totalRows?: number
+    /**
+     * Caricamento in corso: la griglia ha `aria-busy`, c'è un indicatore e l'annuncio per gli
+     * screen reader. Le righe precedenti restano visibili.
+     */
+    loading?: boolean
+    /** Errore dell'ultimo caricamento: mostra il messaggio (o lo slot `error`). Falsy = nessun errore. */
+    error?: unknown
     /** Modalità di selezione delle righe (per `rowKey`, anche tra le pagine). */
     selection?: SelectionMode
     /** Con la selezione attiva, mostra la colonna con le checkbox. */
@@ -73,6 +96,10 @@ const props = withDefaults(
     pageSizeOptions: () => [10, 25, 50, 100],
     searchable: true,
     paginated: true,
+    mode: 'client',
+    totalRows: undefined,
+    loading: false,
+    error: undefined,
     debounce: 250,
     state: undefined,
     selection: 'none',
@@ -85,6 +112,11 @@ const props = withDefaults(
 const emit = defineEmits<{
   /** Lo stato è cambiato (ordinamento, filtri, ricerca, pagina…). Si emette solo se differisce da `state`. */
   'update:state': [state: TableState]
+  /**
+   * Modalità server: servono nuovi dati. Emesso dopo il primo montaggio e a ogni modifica di
+   * ordinamento, filtri, ricerca, pagina o dimensione di pagina (dopo il debounce).
+   */
+  request: [request: TableRequest]
 }>()
 
 defineSlots<{
@@ -98,6 +130,10 @@ defineSlots<{
   [name: `filter-${string}`]: ((props: FilterSlotProps<T>) => unknown) | undefined
   /** Contenuto mostrato quando non ci sono righe da visualizzare. */
   empty?(): unknown
+  /** Indicatore di caricamento (sostituisce la barra di default; è nascosto agli screen reader). */
+  loading?(): unknown
+  /** Messaggio d'errore (sostituisce quello di default); `retry` rimanda la richiesta. */
+  error?(props: ErrorSlotProps): unknown
   /** Sostituisce la barra di ricerca di default. */
   toolbar?(props: { search: string; setSearch: (value: string) => void }): unknown
   /** Sostituisce i controlli di paginazione di default. */
@@ -126,7 +162,8 @@ const stateContext = computed(() => ({
  */
 function normalizeIncoming(raw: unknown): TableState {
   const valid = validateState(raw, stateContext.value)
-  if (!props.paginated || props.rows.length === 0) return valid
+  // In modalità server la pagina non si tocca: il totale arriva dopo la richiesta.
+  if (props.mode === 'server' || !props.paginated || props.rows.length === 0) return valid
   const byColumn = columnFilterIndices(props.rows, props.columns, valid.filters)
   const found = globalSearchIndices(props.rows, props.columns, valid.globalSearch, byColumn)
   return clampStatePage(valid, found.length)
@@ -142,24 +179,48 @@ const text = computed<TableLabels>(() => ({ ...DEFAULT_LABELS, ...props.labels }
 
 // Pipeline: filtri di colonna → ricerca globale → ordinamento → pagina. Ogni passo lavora
 // su indici e si ricalcola solo quando cambiano i propri input (computed memoizza).
+const isServer = computed(() => props.mode === 'server')
+
+// In modalità server il lavoro lo fa il server: niente ricerca, filtri né ordinamento locali.
 const columnFiltered = computed(() =>
-  columnFilterIndices(props.rows, props.columns, state.value.filters),
+  isServer.value ? [] : columnFilterIndices(props.rows, props.columns, state.value.filters),
 )
 const filtered = computed(() =>
-  globalSearchIndices(props.rows, props.columns, state.value.globalSearch, columnFiltered.value),
+  isServer.value
+    ? []
+    : globalSearchIndices(
+        props.rows,
+        props.columns,
+        state.value.globalSearch,
+        columnFiltered.value,
+      ),
 )
 const sorted = computed(() =>
-  sortIndices(props.rows, props.columns, state.value.sort, filtered.value),
+  isServer.value ? [] : sortIndices(props.rows, props.columns, state.value.sort, filtered.value),
 )
-const pageInfo = computed(() =>
-  props.paginated
+const pageInfo = computed(() => {
+  if (isServer.value) {
+    // `rows` è già la pagina corrente. La pagina dello stato non viene riportata nei limiti
+    // finché non si conosce `totalRows`, così un ripristino non torna a pagina 1.
+    const size = Math.max(1, Math.floor(state.value.pageSize) || 1)
+    const page = props.paginated ? state.value.page : 1
+    const known = props.totalRows !== undefined
+    const lastPage = known ? Math.max(1, Math.ceil((props.totalRows as number) / size)) : 1
+    const start = (page - 1) * size
+    return { page, pageCount: Math.max(lastPage, page), start, end: start + props.rows.length }
+  }
+  return props.paginated
     ? paginate(sorted.value.length, state.value.page, state.value.pageSize)
-    : paginate(sorted.value.length, 1, Math.max(1, sorted.value.length)),
-)
+    : paginate(sorted.value.length, 1, Math.max(1, sorted.value.length))
+})
 const visibleRows = computed(() =>
-  sorted.value.slice(pageInfo.value.start, pageInfo.value.end).map((i) => props.rows[i] as T),
+  isServer.value
+    ? props.rows
+    : sorted.value.slice(pageInfo.value.start, pageInfo.value.end).map((i) => props.rows[i] as T),
 )
-const total = computed(() => sorted.value.length)
+const total = computed(() =>
+  isServer.value ? (props.totalRows ?? props.rows.length) : sorted.value.length,
+)
 
 function keyOf(row: T): RowKey {
   return getRowKey(row, props.rowKey)
@@ -208,11 +269,113 @@ watch(state, (current) => {
 watch(
   () => pageInfo.value.page,
   (page) => {
-    if (props.paginated && total.value > 0 && state.value.page !== page) {
+    if (!isServer.value && props.paginated && total.value > 0 && state.value.page !== page) {
       state.value = { ...state.value, page }
     }
   },
 )
+
+// Modalità server: se, a caricamento finito, la pagina dello stato supera l'ultima disponibile
+// (es. 3 pagine ripristinate ma ora il server ne ha 2), si scende all'ultima, non alla prima.
+// Non si interviene finché `loading` è attivo o `totalRows` non è noto (o è 0).
+watch(
+  () => [props.totalRows, props.loading, state.value.page, state.value.pageSize] as const,
+  ([totalRows, loading, page, pageSize]) => {
+    if (
+      !isServer.value ||
+      !props.paginated ||
+      loading ||
+      totalRows === undefined ||
+      totalRows <= 0
+    ) {
+      return
+    }
+    const last = Math.max(1, Math.ceil(totalRows / pageSize))
+    if (page > last) state.value = { ...state.value, page: last }
+  },
+)
+
+// --- Modalità server: evento `request` con AbortSignal ---
+
+let controller: AbortController | null = null
+let requestCounter = 0
+let lastRequested: Pick<
+  TableState,
+  'sort' | 'filters' | 'globalSearch' | 'page' | 'pageSize'
+> | null = null
+let isMounted = false
+let isUnmounted = false
+
+/**
+ * Emette `request` con lo stato attuale e annulla la richiesta precedente. Senza `force` non
+ * emette se ordinamento, filtri, ricerca, pagina e dimensione sono uguali all'ultima richiesta
+ * (le modifiche alle colonne non cambiano i dati). Le modifiche dello stesso tick si fondono.
+ */
+function sendRequest(force: boolean) {
+  if (!isServer.value) return
+  const snapshot = cloneState(state.value)
+  const slice = {
+    sort: snapshot.sort,
+    filters: snapshot.filters,
+    globalSearch: snapshot.globalSearch,
+    page: snapshot.page,
+    pageSize: snapshot.pageSize,
+  }
+  if (!force && lastRequested && jsonEqual(lastRequested, slice)) return
+  lastRequested = slice
+  controller?.abort()
+  controller = new AbortController()
+  emit('request', { state: snapshot, signal: controller.signal, id: ++requestCounter })
+}
+
+watch(state, () => {
+  if (isMounted) sendRequest(false)
+})
+
+watch(isServer, (server) => {
+  if (server) {
+    if (isMounted) sendRequest(true)
+  } else {
+    controller?.abort()
+    lastRequested = null
+  }
+})
+
+// Avvisi in sviluppo: in modalità server le opzioni di un filtro `select` non si possono ricavare
+// dalle righe (sono solo la pagina corrente), quindi `filterOptions` è obbligatorio.
+const warnedColumns = new Set<string>()
+watch(
+  [isServer, () => props.columns],
+  () => {
+    if (!isServer.value) return
+    for (const column of props.columns) {
+      if (column.filter === 'select' && !column.filterOptions && !warnedColumns.has(column.id)) {
+        warnedColumns.add(column.id)
+        devWarn(
+          `La colonna "${column.id}" ha filter: 'select' in modalità server ma manca filterOptions: ` +
+            `le opzioni non si possono ricavare dalle righe (sono solo la pagina corrente). ` +
+            `Dichiara filterOptions, altrimenti il filtro resta senza voci.`,
+        )
+      }
+    }
+  },
+  { immediate: true },
+)
+
+onMounted(async () => {
+  isMounted = true
+  // La prima richiesta parte dopo il primo giro di aggiornamenti: se il genitore ripristina uno
+  // stato salvato subito dopo il montaggio (es. usePersistentTableState), la richiesta usa
+  // quello stato invece di partire due volte (la prima verrebbe annullata subito).
+  await nextTick()
+  await nextTick()
+  if (!isUnmounted) sendRequest(false)
+})
+
+onBeforeUnmount(() => {
+  isUnmounted = true
+  controller?.abort()
+})
 
 onMounted(() => {
   // Uno stato ricevuto e poi corretto dalla validazione va comunicato al genitore.
@@ -280,7 +443,12 @@ function onSearchInput(value: string) {
 }
 
 function setPage(page: number) {
-  state.value = { ...state.value, page: paginate(total.value, page, state.value.pageSize).page }
+  // Con il totale ancora ignoto (server) non si può sapere qual è l'ultima pagina.
+  const next =
+    isServer.value && props.totalRows === undefined
+      ? Math.max(1, Math.floor(page) || 1)
+      : paginate(total.value, page, state.value.pageSize).page
+  state.value = { ...state.value, page: next }
 }
 
 function setPageSize(size: number) {
@@ -361,7 +529,14 @@ function setRangeBound(column: ColumnDef<T>, bound: 'min' | 'max', raw: string) 
 const optionsByColumn = computed(() => {
   const map = new Map<string, ReturnType<typeof selectOptions>>()
   for (const column of filterColumns.value) {
-    if (column.filter === 'select') map.set(column.id, selectOptions(props.rows, column))
+    if (column.filter !== 'select') continue
+    // Lato server `rows` è solo la pagina corrente: si usano solo le opzioni dichiarate.
+    map.set(
+      column.id,
+      isServer.value
+        ? normalizeOptions(column.filterOptions ?? [])
+        : selectOptions(props.rows, column),
+    )
   }
   return map
 })
@@ -388,10 +563,16 @@ const showSelectColumn = computed(() => selectionEnabled.value && props.selectio
 const colOffset = computed(() => (showSelectColumn.value ? 1 : 0))
 const selectedSet = computed(() => new Set(selectedModel.value))
 const selectedCount = computed(() => selectedModel.value.length)
-/** Chiavi di tutte le righe filtrate, nell'ordine mostrato (servono a intervalli e "tutte"). */
-const filteredKeys = computed(() =>
-  selectionEnabled.value ? sorted.value.map((i) => keyOf(props.rows[i] as T)) : [],
-)
+/**
+ * Chiavi di tutte le righe filtrate nell'ordine mostrato (servono a intervalli e "tutte").
+ * In modalità server sono solo quelle della pagina corrente.
+ */
+const filteredKeys = computed(() => {
+  if (!selectionEnabled.value) return []
+  // Lato server «tutte» vale per la pagina corrente (le altre righe non sono nel componente).
+  if (isServer.value) return props.rows.map(keyOf)
+  return sorted.value.map((i) => keyOf(props.rows[i] as T))
+})
 const allState = computed(() => selectionState(selectedModel.value, filteredKeys.value))
 const selectionSummary = computed(() => text.value.selectedCount(selectedCount.value))
 /** Senza il riepilogo della paginazione di default, l'annuncio ha una regione propria. */
@@ -606,6 +787,8 @@ defineExpose({
   clearFilters,
   /** Deseleziona tutte le righe. */
   clearSelection,
+  /** Modalità server: rimanda la richiesta con lo stato corrente (es. dopo un errore). */
+  refresh: () => sendRequest(true),
   /** Sposta il focus su una cella: riga 0 = intestazione, 1 = filtri (se presenti), poi le righe. */
   focusCell: (row: number, col = 0) => focusCell({ row, col }),
   /** Riporta ordinamento, filtri, ricerca e pagina ai valori iniziali. */
@@ -614,7 +797,11 @@ defineExpose({
 </script>
 
 <template>
-  <div :class="['vt-root', classes.root]">
+  <div
+    :class="['vt-root', classes.root]"
+    :data-mode="mode"
+    :data-loading="loading ? '' : undefined"
+  >
     <slot name="toolbar" :search="state.globalSearch" :set-search="setSearch">
       <div v-if="searchable || hasFilterRow" :class="['vt-toolbar', classes.toolbar]">
         <input
@@ -639,12 +826,26 @@ defineExpose({
       </div>
     </slot>
 
+    <div v-if="loading" :class="['vt-loading', classes.loading]" aria-hidden="true">
+      <slot name="loading"><div class="vt-loading-bar"></div></slot>
+    </div>
+
+    <div v-if="error" :class="['vt-error', classes.error]" role="alert">
+      <slot name="error" :error="error" :retry="() => sendRequest(true)">
+        <span>{{ text.error }}</span>
+        <button v-if="isServer" type="button" class="vt-retry" @click="sendRequest(true)">
+          {{ text.retry }}
+        </button>
+      </slot>
+    </div>
+
     <div
       ref="gridEl"
       class="vt-grid"
       role="grid"
       :aria-label="ariaLabel"
-      :aria-rowcount="total + headerRowCount"
+      :aria-busy="loading ? 'true' : undefined"
+      :aria-rowcount="isServer && totalRows === undefined ? -1 : total + headerRowCount"
       :aria-colcount="columns.length + colOffset"
       :aria-multiselectable="selection === 'multiple' ? true : undefined"
       @keydown="onGridKeydown"
@@ -845,7 +1046,8 @@ defineExpose({
           :aria-rowindex="headerRowCount + 1"
         >
           <div :class="['vt-empty', classes.empty]" role="gridcell" :aria-colspan="columns.length">
-            <slot name="empty">{{ text.empty }}</slot>
+            <template v-if="loading">{{ text.loading }}</template>
+            <slot v-else name="empty">{{ text.empty }}</slot>
           </div>
         </div>
       </div>
@@ -900,6 +1102,10 @@ defineExpose({
         </button>
       </div>
     </slot>
+
+    <div class="vt-sr-only" role="status" aria-live="polite">
+      {{ loading ? text.loading : error ? text.error : '' }}
+    </div>
   </div>
 </template>
 

@@ -24,6 +24,35 @@ export interface NumberRange {
  */
 export type FilterValue = FilterPrimitive | FilterPrimitive[] | NumberRange
 
+/**
+ * Modalità dei dati: `client` (default) ordina, filtra e pagina `rows` nel browser;
+ * `server` mostra `rows` così come arrivano e delega tutto al server tramite l'evento `request`.
+ */
+export type TableMode = 'client' | 'server'
+
+/**
+ * Richiesta di dati emessa in modalità server (evento `request`).
+ * Contiene lo stato completo e un `signal` che il componente annulla quando parte una
+ * richiesta più recente (o allo smontaggio): passalo a `fetch`, e dopo ogni `await` controlla
+ * `signal.aborted` per scartare le risposte vecchie.
+ */
+export interface TableRequest {
+  /** Stato completo: `sort`, `filters`, `globalSearch`, `page`, `pageSize` (e il resto). */
+  state: TableState
+  /** Si annulla quando parte una richiesta più recente, o quando la tabella viene smontata. */
+  signal: AbortSignal
+  /** Contatore crescente delle richieste (1, 2, 3…). */
+  id: number
+}
+
+/** Props passate allo slot `error`. */
+export interface ErrorSlotProps {
+  /** Il valore della prop `error`. */
+  error: unknown
+  /** Rimanda la richiesta con lo stato corrente (solo in modalità server). */
+  retry: () => void
+}
+
 /** Modalità di selezione delle righe. */
 export type SelectionMode = 'none' | 'single' | 'multiple'
 
@@ -102,6 +131,8 @@ export interface TableClasses {
   header?: string
   headerCell?: string
   filterRow?: string
+  loading?: string
+  error?: string
   filterInput?: string
   body?: string
   row?: string
@@ -134,6 +165,12 @@ export interface TableLabels {
   filterMin: string
   filterMax: string
   clearFilters: string
+  /** Annuncio e testo mostrati durante il caricamento. */
+  loading: string
+  /** Messaggio mostrato (e annunciato) quando `error` è impostato. */
+  error: string
+  /** Pulsante che rimanda la richiesta dopo un errore. */
+  retry: string
   /** Etichetta accessibile della checkbox che seleziona tutte le righe. */
   selectAll: string
   /** Etichetta accessibile della checkbox di una riga. */

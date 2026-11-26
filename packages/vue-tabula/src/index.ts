@@ -41,6 +41,7 @@ export { paginate } from './core/paginate.js'
 export type { PageInfo } from './core/paginate.js'
 export type {
   CellSlotProps,
+  ErrorSlotProps,
   ColumnDef,
   FilterKind,
   FilterOption,
@@ -54,6 +55,8 @@ export type {
   SortDirection,
   SortEntry,
   TableClasses,
+  TableMode,
+  TableRequest,
   TableLabels,
   TableState,
 } from './types.js'

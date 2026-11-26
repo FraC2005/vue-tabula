@@ -1,4 +1,3 @@
-/* eslint-disable vue/one-component-per-file -- le pagine di prova sono componenti locali */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { mount } from '@vue/test-utils'
