@@ -1,0 +1,44 @@
+# Dipendenze
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+*.tsbuildinfo
+.nuxt/
+.output/
+
+# VitePress
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
+# Test
+coverage/
+test-results/
+playwright-report/
+.vitest-attachments/
+
+# Ambiente e segreti
+.env
+.env.*
+!.env.example
+.npmrc.local
+
+# Log
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Claude Code (impostazioni locali)
+.claude/settings.local.json
+
+# Temporanei
+*.tmp
+.cache/
