@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="T extends object">
 import { computed } from 'vue'
-import type { CellSlotProps, ColumnDef, RowKey } from '../types'
-import { getCellValue } from '../core/accessor'
+import type { CellSlotProps, ColumnDef, RowKey } from '../types.js'
+import { getCellValue } from '../core/accessor.js'
 
 const props = defineProps<{
   rows: T[]
@@ -77,3 +77,5 @@ const rowCount = computed(() => props.rows.length + 1)
     </div>
   </div>
 </template>
+
+<style src="../styles/vue-tabula.css"></style>

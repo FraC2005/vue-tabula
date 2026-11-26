@@ -42,12 +42,13 @@
     "dist"
   ],
   "scripts": {
-    "build": "vite build && vue-tsc -p tsconfig.build.json",
+    "build": "vite build && vue-tsc -p tsconfig.build.json && node scripts/fix-dts.mjs",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:browser": "vitest run --project browser",
-    "test:coverage": "vitest run --project unit --coverage"
+    "test:coverage": "vitest run --project unit --coverage",
+    "check:package": "pnpm dlx publint && pnpm dlx @arethetypeswrong/cli --pack --profile esm-only --exclude-entrypoints ./style.css"
   },
   "peerDependencies": {
     "vue": "^3.5.0"

@@ -14,7 +14,8 @@
     "typecheck": "pnpm -r --filter vue-tabula typecheck",
     "test": "pnpm --filter vue-tabula test",
     "build": "pnpm -r build",
-    "docs:dev": "pnpm --filter vue-tabula-docs dev"
+    "docs:dev": "pnpm --filter vue-tabula-docs dev",
+    "check:package": "pnpm --filter vue-tabula check:package"
   },
   "devDependencies": {
     "eslint": "^10.15.0",

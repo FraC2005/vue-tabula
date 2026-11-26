@@ -1,4 +1,4 @@
-import type { TableState } from '../types'
+import type { TableState } from '../types.js'
 
 /** Dimensione di pagina predefinita. */
 export const DEFAULT_PAGE_SIZE = 25
