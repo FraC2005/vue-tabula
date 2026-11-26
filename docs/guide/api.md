@@ -27,12 +27,25 @@
 | `sortFn`                        | Confronto personalizzato `(a, b) => number`                   |
 | `align`                         | `'left' \| 'center' \| 'right'`                               |
 
+## Eventi
+
+| Evento            | Payload                                  | Quando                                                                  |
+| ----------------- | ---------------------------------------- | ----------------------------------------------------------------------- |
+| `request`         | `TableRequest` (`{ state, signal, id }`) | Modalità server: dopo il montaggio e a ogni modifica dei dati richiesti |
+| `update:state`    | `TableState`                             | Lo stato è cambiato e differisce da `state`                             |
+| `update:selected` | `RowKey[]`                               | La selezione è cambiata                                                 |
+
+## Slot
+
+`cell-<id>`, `cell`, `header-<id>`, `filter-<id>`, `empty`, `loading`, `error`, `toolbar`, `pagination`: vedi [Celle personalizzate](./slots).
+
 ## Metodi esposti
 
 Con un `ref` al componente:
 
 - `getState(): TableState` — copia dello stato corrente (serializzabile in JSON); applica prima quanto appena digitato.
 - `resetState(): void` — riporta ordinamento, filtri, ricerca e pagina ai valori iniziali.
+- `refresh(): void` — modalità server: rimanda la richiesta con lo stato corrente.
 - `clearSelection(): void` — deseleziona tutte le righe.
 - `focusCell(row, col?): void` — sposta il focus su una cella (riga 0 = intestazione, 1 = filtri se presenti, poi le righe).
 - `clearFilters(): void` — rimuove i filtri di colonna e la ricerca globale.
@@ -41,7 +54,7 @@ Con un `ref` al componente:
 
 `createDefaultState`, `DEFAULT_PAGE_SIZE`, `setColumnFilter`, `getCellValue`, `getRowKey`, `compareValues`, `sortIndices`, `toggleSort`, `globalSearchIndices`, `normalizeText`, `columnFilterIndices`, `isFilterActive`, `selectOptions`, `normalizeOptions`, `validateState`, `parseState`, `clampStatePage`, `cloneState`, `jsonEqual`, `STATE_VERSION`, `usePersistentTableState`, `toggleKey`, `selectRange`, `selectKeys`, `deselectKeys`, `pruneSelection`, `selectionState`, `createDebouncer`, `moveGridPosition`, `clampPosition`, `paginate`.
 
-Tipi: `ColumnDef`, `TableState`, `SortEntry`, `SortDirection`, `RowKey`, `CellSlotProps`, `HeaderSlotProps`, `FilterSlotProps`, `FilterKind`, `FilterOption`, `FilterPrimitive`, `FilterValue`, `NumberRange`, `StateValidationContext`, `StateColumn`, `PersistentTableState`, `PersistentTableStateOptions`, `SelectionMode`, `SelectionState`, `GridPosition`, `GridBounds`, `Debouncer`, `TableClasses`, `TableLabels`, `PageInfo`.
+Tipi: `ColumnDef`, `TableState`, `SortEntry`, `SortDirection`, `RowKey`, `CellSlotProps`, `HeaderSlotProps`, `ErrorSlotProps`, `TableMode`, `TableRequest`, `FilterSlotProps`, `FilterKind`, `FilterOption`, `FilterPrimitive`, `FilterValue`, `NumberRange`, `StateValidationContext`, `StateColumn`, `PersistentTableState`, `PersistentTableStateOptions`, `SelectionMode`, `SelectionState`, `GridPosition`, `GridBounds`, `Debouncer`, `TableClasses`, `TableLabels`, `PageInfo`.
 
 ::: warning API non ancora stabile
 Siamo in 0.x: tra una versione minore e l'altra l'API può cambiare. Le modifiche sono nel [CHANGELOG](https://github.com/FraC2005/vue-tabula/blob/main/CHANGELOG.md).

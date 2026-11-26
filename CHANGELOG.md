@@ -5,6 +5,26 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il p
 
 ## [Non rilasciato]
 
+## [0.3.0] - 2026-11-26
+
+Paginazione lato server.
+
+### Aggiunto
+
+- Modalità server (`mode="server"`): la tabella non ordina, non filtra e non pagina; mostra `rows` così come arrivano e usa `totalRows` per la paginazione (`undefined` = non ancora noto: `aria-rowcount="-1"` e pagina non toccata). `sortFn` e `filterFn` delle colonne sono ignorati.
+- Evento `request` (`TableRequest`: `{ state, signal, id }`) con lo stato completo: emesso dopo il primo montaggio e a ogni modifica di ordinamento, filtri, ricerca globale, pagina o dimensione di pagina, con il debounce già esistente per i campi digitati. Non parte per modifiche alle colonne; le modifiche dello stesso istante si fondono in una richiesta. La prima richiesta usa già uno stato ripristinato subito dopo il montaggio (una sola richiesta, anche con `usePersistentTableState`).
+- `AbortSignal` nel payload di `request`: il componente lo annulla quando parte una richiesta più recente e allo smontaggio, così il genitore ignora le risposte fuori ordine (`signal.aborted`, oppure il contatore `id`). Metodo esposto `refresh()` per rimandare la richiesta.
+- Prop `loading`: `aria-busy` sulla griglia, barra di caricamento (che rispetta `prefers-reduced-motion`), righe precedenti ancora visibili e annuncio nel `role="status"`; slot `loading`. Prop `error` e slot `error` (`{ error, retry }`) con `role="alert"` e pulsante Retry in modalità server.
+- Filtri a selezione in modalità server: `filterOptions` è obbligatorio, con un avviso in console in sviluppo (una volta per colonna).
+- Selezione in modalità server: la checkbox dell'intestazione, Ctrl/Cmd+A, lo stato indeterminato e gli intervalli valgono solo per la pagina corrente; le chiavi di altre pagine restano selezionate e contate.
+- Stato in modalità server: `v-model:state` e `usePersistentTableState` funzionano; il ripristino non riporta la pagina a 1 prima che `totalRows` sia noto e, a caricamento finito, una pagina oltre l'ultima scende all'ultima (non alla prima).
+- Tipi `TableMode`, `TableRequest`, `ErrorSlotProps`; etichette `loading`, `error`, `retry`; classi `loading` ed `error`.
+- Documentazione: pagina «Modalità server» (pattern standard con `loading`, risposte fuori ordine, errori, totale, filtri, selezione, stato) con una demo che usa una finta API locale (10.000 righe, latenza casuale, errori simulati, interruttore per ignorare o meno le risposte vecchie), senza servizi esterni.
+
+### Corretto
+
+- Gli avvisi di sviluppo non lanciano `ReferenceError` se la libreria è caricata senza bundler (ESM da CDN, `process` non definito) e restano attivi nel browser con Vite/webpack in sviluppo.
+
 ## [0.2.0] - 2026-11-26
 
 ### Aggiunto

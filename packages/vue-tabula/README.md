@@ -11,6 +11,7 @@ Tabella dati avanzata per Vue 3, scritta da zero: **zero dipendenze a runtime**,
 - Ordinamento su più colonne (Maiusc + clic)
 - Ricerca globale (senza distinguere maiuscole e accenti)
 - Filtri per colonna: testo, selezione e intervallo numerico, combinabili in AND; ricerca e filtri digitati con debounce configurabile
+- Modalità server: la tabella emette `request` (con `AbortSignal` per ignorare le risposte vecchie) e il genitore fornisce `rows` e `totalRows`; `loading` e `error` accessibili
 - Stato serializzabile in JSON con `v-model:state`, ripristino validato (mai lancia su dati corrotti) e helper `usePersistentTableState` per salvarlo in `localStorage`/`sessionStorage` (compatibile con SSR)
 - Selezione delle righe (singola o multipla) per chiave, tra le pagine, con `v-model:selected`, Maiusc+clic per gli intervalli e scorciatoie da tastiera
 - Navigazione da tastiera secondo il pattern ARIA grid (un solo tab stop, frecce, Invio/F2, Esc)
@@ -18,7 +19,7 @@ Tabella dati avanzata per Vue 3, scritta da zero: **zero dipendenze a runtime**,
 - Celle e intestazioni personalizzabili con slot, tipizzate sul tipo di riga
 - Stile con le variabili CSS di shadcn, senza Tailwind a runtime; classi sovrascrivibili tramite prop
 
-In arrivo: paginazione lato server, colonne ridimensionabili/riordinabili/fisse, righe espandibili, virtualizzazione (50.000 righe) e navigazione da tastiera con la virtualizzazione.
+In arrivo: colonne ridimensionabili/riordinabili/fisse, righe espandibili, virtualizzazione (50.000 righe) e navigazione da tastiera con la virtualizzazione.
 
 ## Installazione
 

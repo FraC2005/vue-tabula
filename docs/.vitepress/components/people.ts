@@ -32,8 +32,17 @@ const surnames = [
   'Rossi',
   'Álvarez',
 ]
-const cities = ['Roma', 'Milano', 'Torino', 'Napoli', 'Bologna', 'Firenze', 'Madrid', 'Londra']
-const roles = ['Sviluppo', 'Design', 'Prodotto', 'Dati', 'Supporto']
+export const cities = [
+  'Roma',
+  'Milano',
+  'Torino',
+  'Napoli',
+  'Bologna',
+  'Firenze',
+  'Madrid',
+  'Londra',
+]
+export const roles = ['Sviluppo', 'Design', 'Prodotto', 'Dati', 'Supporto']
 
 /** Genera righe di esempio deterministiche (stesso risultato a ogni caricamento, anche in SSR). */
 export function makePeople(count: number): Person[] {

@@ -8,6 +8,7 @@ La tabella segue il pattern ARIA **grid**: `role="grid"`, `rowgroup`, `row`, `co
 - Il riepilogo delle pagine è una regione `role="status"`: lo screen reader annuncia i cambi di pagina e di risultati.
 - La riga dei filtri è una riga del grid (`aria-rowindex` 2) e ogni controllo ha un nome accessibile («Filter Nome»); gli indici delle righe dati tengono conto della riga in più.
 - Con la [selezione](./selection) le righe espongono `aria-selected` e la griglia `aria-multiselectable`; il numero di righe selezionate è annunciato nel `role="status"`.
+- In [modalità server](./server-side) la griglia ha `aria-busy` durante il caricamento e `aria-rowcount` vale `-1` finché `totalRows` non è noto; il caricamento e gli errori sono annunciati in una regione `role="status"` (gli errori hanno anche `role="alert"`).
 - Il focus è visibile (`:focus-visible`).
 - Passa `aria-label` alla tabella per darle un nome.
 

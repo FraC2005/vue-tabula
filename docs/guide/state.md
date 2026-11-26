@@ -65,7 +65,7 @@ Uno stato che arriva da fuori (JSON salvato, storage del browser, un server, un 
 | `version` più vecchia                                        | Passa dalle migrazioni, poi viene validata                             |
 | Elenchi enormi                                               | Troncati (1000 voci)                                                   |
 
-Se la validazione corregge qualcosa, il componente emette `update:state` con lo stato corretto, così il genitore resta allineato. Se i dati (`rows`) non sono ancora arrivati, la pagina non viene riportata nei limiti (non si sa quante pagine ci saranno): lo farà quando i dati ci sono.
+Se la validazione corregge qualcosa, il componente emette `update:state` con lo stato corretto, così il genitore resta allineato. Se i dati (`rows`) non sono ancora arrivati, la pagina non viene riportata nei limiti (non si sa quante pagine ci saranno): lo farà quando i dati ci sono. In [modalità server](./server-side#stato-e-persistenza) la pagina non si tocca finché `totalRows` non è noto e `loading` è spento: tieni sempre `loading` acceso durante le richieste.
 
 La `version` serve alle migrazioni future: oggi esiste solo la 1. Quando il formato cambierà, gli stati salvati con la versione precedente verranno convertiti automaticamente.
 

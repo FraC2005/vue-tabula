@@ -64,7 +64,7 @@ Restituisce un nuovo array (stesso ordine, senza le chiavi senza riga). Il compo
 | Ctrl/Cmd+A su una cella (solo `multiple`) | Seleziona tutte le righe filtrate                                          |
 
 - L'**intervallo** segue l'ordine mostrato (ordinamento e filtri compresi) e può attraversare più pagine. Si aggiunge alla selezione esistente; il verso non conta.
-- «Tutte» e Ctrl/Cmd+A valgono per le righe che passano i filtri e la ricerca: le altre righe selezionate restano. In modalità server (0.3.0) varranno per la pagina corrente.
+- «Tutte» e Ctrl/Cmd+A valgono per le righe che passano i filtri e la ricerca: le altre righe selezionate restano. In [modalità server](./server-side#selezione) valgono per la pagina corrente (le altre righe non sono nel componente).
 - La checkbox dell'intestazione è **indeterminata** quando è selezionata solo una parte delle righe filtrate.
 - Ctrl/Cmd+A dentro un campo di testo (filtro, ricerca) seleziona il testo, non le righe.
 - I clic su elementi interattivi dentro le celle (`a`, `button`, `input`, `select`, `textarea`, `[contenteditable]`, `[role="button"]`) non selezionano nulla, nemmeno con Maiusc: un link o un pulsante nello slot di una cella si comporta normalmente. Fa eccezione la checkbox di selezione.
