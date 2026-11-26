@@ -13,6 +13,9 @@ export const DEFAULT_LABELS: TableLabels = {
   filterMin: 'Min',
   filterMax: 'Max',
   clearFilters: 'Clear filters',
+  selectAll: 'Select all rows',
+  selectRow: 'Select row',
+  selectedCount: (count) => `${count} selected`,
   summary: ({ start, end, total }) => (total === 0 ? '0 rows' : `${start}–${end} of ${total}`),
   pageOf: (page, pageCount) => `Page ${page} of ${pageCount}`,
 }

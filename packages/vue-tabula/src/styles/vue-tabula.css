@@ -139,6 +139,32 @@
     outline-offset: -2px;
   }
 
+  .vt-select-cell {
+    display: flex;
+    flex: 0 0 2.5rem;
+    align-items: center;
+    justify-content: center;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .vt-select-input {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--vt-primary);
+  }
+
+  .vt-row-selected > .vt-cell {
+    background: var(--vt-accent);
+  }
+
+  .vt-selection-status {
+    padding: 0.5rem 0.75rem;
+    color: var(--vt-muted-foreground);
+  }
+
   .vt-empty {
     flex: 1;
     padding: 2rem 0.75rem;

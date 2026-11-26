@@ -61,6 +61,9 @@ I testi dell'interfaccia sono in inglese di default e si traducono con la prop `
     filterMin: 'Min',
     filterMax: 'Max',
     clearFilters: 'Azzera filtri',
+    selectAll: 'Seleziona tutte le righe',
+    selectRow: 'Seleziona la riga',
+    selectedCount: (n) => `${n} selezionate`,
   }"
   ...
 />

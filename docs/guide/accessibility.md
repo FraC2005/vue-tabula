@@ -7,6 +7,7 @@ La tabella segue il pattern ARIA **grid**: `role="grid"`, `rowgroup`, `row`, `co
 - Le intestazioni ordinabili espongono `aria-sort` (`ascending`, `descending`, `none`).
 - Il riepilogo delle pagine è una regione `role="status"`: lo screen reader annuncia i cambi di pagina e di risultati.
 - La riga dei filtri è una riga del grid (`aria-rowindex` 2) e ogni controllo ha un nome accessibile («Filter Nome»); gli indici delle righe dati tengono conto della riga in più.
+- Con la [selezione](./selection) le righe espongono `aria-selected` e la griglia `aria-multiselectable`; il numero di righe selezionate è annunciato nel `role="status"`.
 - Il focus è visibile (`:focus-visible`).
 - Passa `aria-label` alla tabella per darle un nome.
 
@@ -22,6 +23,9 @@ La griglia è **un solo tab stop** (roving tabindex): Tab entra sulla cella atti
 | PageUp / PageDown     | 10 righe su / giù                                                           |
 | Invio o F2            | Entra nel controllo della cella (filtro, link o pulsante nello slot)        |
 | Invio o Spazio        | Su un'intestazione: ordina (con Maiusc, aggiunge la colonna)                |
+| Spazio                | Sulla cella della checkbox di selezione: seleziona/deseleziona la riga      |
+| Maiusc+Spazio         | Su qualunque cella di una riga: seleziona/deseleziona la riga               |
+| Ctrl/Cmd+A            | Seleziona tutte le righe filtrate (solo con `selection="multiple"`)         |
 | Esc                   | Dentro un controllo: torna alla cella e applica subito ciò che hai digitato |
 
 Dentro un controllo (campo di testo, menu) i tasti funzionano normalmente: le frecce muovono il cursore o cambiano la voce, non la cella. La riga 0 è l'intestazione, la 1 i filtri (se ci sono), poi le righe della pagina.

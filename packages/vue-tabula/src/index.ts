@@ -10,6 +10,14 @@ export {
   selectOptions,
 } from './core/columnFilters.js'
 export type { NormalizedOption } from './core/columnFilters.js'
+export {
+  deselectKeys,
+  selectKeys,
+  selectRange,
+  selectionState,
+  toggleKey,
+} from './core/selection.js'
+export type { SelectionState } from './core/selection.js'
 export { createDebouncer } from './core/debounce.js'
 export type { Debouncer } from './core/debounce.js'
 export { clampPosition, moveGridPosition } from './core/navigation.js'
@@ -27,6 +35,7 @@ export type {
   NumberRange,
   HeaderSlotProps,
   RowKey,
+  SelectionMode,
   SortDirection,
   SortEntry,
   TableClasses,

@@ -681,4 +681,326 @@ describe('VtTable', () => {
       expect(wrapper.findAll('[tabindex="0"]')).toHaveLength(1)
     })
   })
+
+  describe('selezione delle righe', () => {
+    interface P5 {
+      id: number
+      nome: string
+    }
+    const people: P5[] = Array.from({ length: 25 }, (_, i) => ({ id: i + 1, nome: `P${i + 1}` }))
+    const cols: ColumnDef<P5>[] = [{ id: 'nome', header: 'Nome', filter: 'text' }]
+    let wrapper: ReturnType<typeof mountSel>
+    function mountSel(props: Record<string, unknown> = {}, slots: Record<string, string> = {}) {
+      return mount(VtTable as unknown as Component, {
+        attachTo: document.body,
+        props: {
+          rows: people,
+          columns: cols,
+          rowKey: 'id',
+          pageSize: 10,
+          debounce: 0,
+          selection: 'multiple',
+          ...props,
+        },
+        slots,
+      })
+    }
+    afterEach(() => wrapper?.unmount())
+
+    const bodyRows = () => wrapper.findAll('.vt-body [role="row"]')
+    const selectedIds = () =>
+      bodyRows()
+        .filter((r) => r.attributes('aria-selected') === 'true')
+        .map((r) => r.get('[aria-colindex="2"]').text())
+    const checkbox = (i: number) => bodyRows()[i]!.get('input.vt-select-input')
+    const headerBox = () => wrapper.get('[role="columnheader"] input.vt-select-input')
+    const cell = (row: number, col: number) =>
+      wrapper.get(`[data-vt-row="${row}"][data-vt-col="${col}"]`)
+    const emitted = () => wrapper.emitted('update:selected') as unknown[][] | undefined
+    const lastEmitted = () => emitted()!.at(-1)![0]
+    async function press(row: number, col: number, key: string, init: object = {}) {
+      await cell(row, col).trigger('keydown', { key, ...init })
+      await flushPromises()
+    }
+
+    it('senza selection non c’è colonna, aria-selected né aria-multiselectable', () => {
+      wrapper = mountSel({ selection: 'none' })
+      expect(wrapper.find('input.vt-select-input').exists()).toBe(false)
+      expect(wrapper.get('[role="grid"]').attributes('aria-multiselectable')).toBeUndefined()
+      expect(bodyRows()[0]!.attributes('aria-selected')).toBeUndefined()
+      expect(wrapper.get('[role="grid"]').attributes('aria-colcount')).toBe('1')
+    })
+
+    it('in multiple espone aria-multiselectable, aria-selected e indici di colonna spostati', () => {
+      wrapper = mountSel()
+      const grid = wrapper.get('[role="grid"]')
+      expect(grid.attributes('aria-multiselectable')).toBe('true')
+      expect(grid.attributes('aria-colcount')).toBe('2')
+      expect(bodyRows()[0]!.attributes('aria-selected')).toBe('false')
+      expect(wrapper.get('[role="columnheader"]').attributes('aria-colindex')).toBe('1')
+      expect(wrapper.findAll('[role="columnheader"]')[1]!.attributes('aria-colindex')).toBe('2')
+      expect(wrapper.findAll('[role="columnheader"]')[1]!.attributes('data-vt-col')).toBe('1')
+    })
+
+    it('la checkbox seleziona la riga, aggiorna aria-selected ed emette update:selected', async () => {
+      wrapper = mountSel()
+      await checkbox(1).trigger('click')
+      expect(selectedIds()).toEqual(['P2'])
+      expect(lastEmitted()).toEqual([2])
+      await checkbox(1).trigger('click')
+      expect(selectedIds()).toEqual([])
+      expect(lastEmitted()).toEqual([])
+    })
+
+    it('funziona anche controllata dal genitore con v-model:selected', async () => {
+      wrapper = mountSel({
+        selected: [3],
+        'onUpdate:selected': (keys: number[]) => wrapper.setProps({ selected: keys }),
+      })
+      expect(selectedIds()).toEqual(['P3'])
+      await checkbox(0).trigger('click')
+      expect(selectedIds()).toEqual(['P1', 'P3'])
+    })
+
+    it('in single una sola riga alla volta e nessuna checkbox nell’intestazione', async () => {
+      wrapper = mountSel({ selection: 'single' })
+      expect(wrapper.get('[role="grid"]').attributes('aria-multiselectable')).toBeUndefined()
+      expect(wrapper.find('[role="columnheader"] input').exists()).toBe(false)
+      await checkbox(0).trigger('click')
+      await checkbox(1).trigger('click')
+      expect(selectedIds()).toEqual(['P2'])
+    })
+
+    it('la selezione è per chiave: resta cambiando pagina e ordinamento', async () => {
+      wrapper = mountSel()
+      await checkbox(0).trigger('click')
+      await wrapper.get('[aria-label="Next page"]').trigger('click')
+      expect(selectedIds()).toEqual([])
+      await checkbox(0).trigger('click')
+      await wrapper.get('[aria-label="Previous page"]').trigger('click')
+      expect(selectedIds()).toEqual(['P1'])
+      expect(lastEmitted()).toEqual([1, 11])
+      await wrapper.findAll('[role="columnheader"]')[1]!.get('button').trigger('click')
+      await wrapper.findAll('[role="columnheader"]')[1]!.get('button').trigger('click')
+      expect(selectedIds()).toEqual([])
+      expect(wrapper.get('[role="status"]').text()).toContain('2 selected')
+    })
+
+    it('la checkbox dell’intestazione seleziona tutte le righe filtrate, anche in altre pagine', async () => {
+      wrapper = mountSel()
+      await headerBox().trigger('click')
+      expect(lastEmitted()).toHaveLength(25)
+      expect((headerBox().element as HTMLInputElement).checked).toBe(true)
+      await headerBox().trigger('click')
+      expect(lastEmitted()).toEqual([])
+      expect((headerBox().element as HTMLInputElement).checked).toBe(false)
+    })
+
+    it('lo stato indeterminato compare con una selezione parziale', async () => {
+      wrapper = mountSel()
+      const box = () => headerBox().element as HTMLInputElement
+      expect(box().indeterminate).toBe(false)
+      await checkbox(0).trigger('click')
+      expect(box().indeterminate).toBe(true)
+      expect(box().checked).toBe(false)
+      await headerBox().trigger('click')
+      expect(box().indeterminate).toBe(false)
+      expect(box().checked).toBe(true)
+    })
+
+    it('"tutte" vale per le righe filtrate e non tocca le altre selezioni', async () => {
+      wrapper = mountSel({
+        selected: [20],
+        'onUpdate:selected': (k: number[]) => wrapper.setProps({ selected: k }),
+      })
+      await wrapper.get('input[aria-label="Filter Nome"]').setValue('P1')
+      await headerBox().trigger('click')
+      // P1, P10-P19 (11 righe) più P20 già selezionata.
+      expect(lastEmitted()).toHaveLength(12)
+      expect(lastEmitted()).toContain(20)
+      await headerBox().trigger('click')
+      expect(lastEmitted()).toEqual([20])
+    })
+
+    it('annuncia il numero di righe selezionate nel role="status"', async () => {
+      wrapper = mountSel()
+      expect(wrapper.get('[role="status"]').text()).toBe('1–10 of 25 · 0 selected')
+      await checkbox(0).trigger('click')
+      await checkbox(1).trigger('click')
+      expect(wrapper.get('[role="status"]').text()).toBe('1–10 of 25 · 2 selected')
+    })
+
+    it('senza paginazione di default l’annuncio ha una regione propria', async () => {
+      wrapper = mountSel({ paginated: false })
+      await checkbox(0).trigger('click')
+      expect(wrapper.get('.vt-selection-status').text()).toBe('1 selected')
+      wrapper.unmount()
+      wrapper = mountSel({}, { pagination: '<template #pagination>custom</template>' })
+      expect(wrapper.get('.vt-selection-status').text()).toBe('0 selected')
+    })
+
+    it('Maiusc+clic seleziona l’intervallo dall’ultima riga toccata, in entrambi i versi', async () => {
+      wrapper = mountSel()
+      await checkbox(2).trigger('click')
+      await checkbox(5).trigger('click', { shiftKey: true })
+      expect(selectedIds()).toEqual(['P3', 'P4', 'P5', 'P6'])
+      await checkbox(0).trigger('click', { shiftKey: true })
+      expect(selectedIds()).toEqual(['P1', 'P2', 'P3', 'P4', 'P5', 'P6'])
+      expect((checkbox(0).element as HTMLInputElement).checked).toBe(true)
+    })
+
+    it('Maiusc+clic funziona anche tra pagine diverse (ordine mostrato)', async () => {
+      wrapper = mountSel()
+      await checkbox(8).trigger('click')
+      await wrapper.get('[aria-label="Next page"]').trigger('click')
+      await checkbox(1).trigger('click', { shiftKey: true })
+      expect(lastEmitted()).toHaveLength(4) // P9, P10, P11, P12
+    })
+
+    it('Maiusc+clic su una cella seleziona l’intervallo (anche senza colonna checkbox)', async () => {
+      wrapper = mountSel({ selectionColumn: false })
+      expect(wrapper.find('input.vt-select-input').exists()).toBe(false)
+      await press(2, 0, ' ', { shiftKey: true })
+      await bodyRows()[4]!.get('[role="gridcell"]').trigger('click', { shiftKey: true })
+      expect(lastEmitted()).toEqual([1, 2, 3, 4, 5])
+    })
+
+    it('un clic semplice su una cella non seleziona', async () => {
+      wrapper = mountSel()
+      await bodyRows()[0]!.get('[aria-colindex="2"]').trigger('click')
+      expect(emitted()).toBeUndefined()
+    })
+
+    it('in single Maiusc+clic su una cella non fa nulla', async () => {
+      wrapper = mountSel({ selection: 'single' })
+      await bodyRows()[0]!.get('[aria-colindex="2"]').trigger('click', { shiftKey: true })
+      expect(emitted()).toBeUndefined()
+    })
+
+    it('Spazio sulla cella della checkbox seleziona la riga', async () => {
+      wrapper = mountSel()
+      await press(2, 0, ' ')
+      expect(selectedIds()).toEqual(['P1'])
+      await press(2, 0, ' ')
+      expect(selectedIds()).toEqual([])
+    })
+
+    it('Spazio sulla cella dati senza Maiusc non seleziona', async () => {
+      wrapper = mountSel()
+      await press(2, 1, ' ')
+      expect(emitted()).toBeUndefined()
+    })
+
+    it('Maiusc+Spazio su qualunque cella dati seleziona la riga', async () => {
+      wrapper = mountSel()
+      await press(3, 1, ' ', { shiftKey: true })
+      expect(selectedIds()).toEqual(['P2'])
+    })
+
+    it('Maiusc+Spazio funziona anche in single', async () => {
+      wrapper = mountSel({ selection: 'single' })
+      await press(2, 1, ' ', { shiftKey: true })
+      await press(4, 1, ' ', { shiftKey: true })
+      expect(selectedIds()).toEqual(['P3'])
+    })
+
+    it('Spazio sulla cella della checkbox nell’intestazione seleziona tutte', async () => {
+      wrapper = mountSel()
+      await press(0, 0, ' ')
+      expect(lastEmitted()).toHaveLength(25)
+      await press(0, 0, ' ')
+      expect(lastEmitted()).toEqual([])
+    })
+
+    it('Ctrl+A e Cmd+A selezionano tutte le righe filtrate in multiple', async () => {
+      wrapper = mountSel()
+      const event = new KeyboardEvent('keydown', {
+        key: 'a',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      })
+      cell(2, 1).element.dispatchEvent(event)
+      await flushPromises()
+      expect(event.defaultPrevented).toBe(true)
+      expect(lastEmitted()).toHaveLength(25)
+      await wrapper.get('input[aria-label="Filter Nome"]').setValue('P2')
+      await wrapper.get('button.vt-clear-filters').trigger('click')
+      wrapper.unmount()
+      wrapper = mountSel()
+      await press(2, 1, 'a', { metaKey: true })
+      expect(lastEmitted()).toHaveLength(25)
+    })
+
+    it('Ctrl+A seleziona solo le righe filtrate', async () => {
+      wrapper = mountSel()
+      await wrapper.get('input[aria-label="Filter Nome"]').setValue('P2')
+      await press(2, 1, 'a', { ctrlKey: true })
+      expect(lastEmitted()).toEqual([2, 20, 21, 22, 23, 24, 25])
+    })
+
+    it('Ctrl+A in single o dentro un campo di testo non seleziona righe', async () => {
+      wrapper = mountSel({ selection: 'single' })
+      const single = new KeyboardEvent('keydown', {
+        key: 'a',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      })
+      cell(2, 1).element.dispatchEvent(single)
+      expect(single.defaultPrevented).toBe(false)
+      expect(emitted()).toBeUndefined()
+      wrapper.unmount()
+
+      wrapper = mountSel()
+      const input = wrapper.get('input[aria-label="Filter Nome"]').element
+      const inText = new KeyboardEvent('keydown', {
+        key: 'a',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      })
+      input.dispatchEvent(inText)
+      expect(inText.defaultPrevented).toBe(false)
+      expect(emitted()).toBeUndefined()
+    })
+
+    it('la navigazione da tastiera tiene conto della colonna di selezione', async () => {
+      wrapper = mountSel()
+      await press(2, 0, 'ArrowRight')
+      expect((document.activeElement as HTMLElement).dataset.vtCol).toBe('1')
+      await press(2, 1, 'ArrowLeft')
+      expect((document.activeElement as HTMLElement).dataset.vtCol).toBe('0')
+      await press(2, 0, 'Enter')
+      expect(document.activeElement).toBe(cell(2, 0).get('input').element)
+    })
+
+    it('Invio sull’intestazione di una colonna dati ordina anche con la colonna di selezione', async () => {
+      wrapper = mountSel()
+      await press(0, 1, 'Enter')
+      expect(cell(0, 1).attributes('aria-sort')).toBe('ascending')
+    })
+
+    it('clearSelection deseleziona tutto', async () => {
+      wrapper = mountSel()
+      await checkbox(0).trigger('click')
+      ;(wrapper.vm as unknown as { clearSelection(): void }).clearSelection()
+      await flushPromises()
+      expect(selectedIds()).toEqual([])
+      expect(lastEmitted()).toEqual([])
+    })
+
+    it('le etichette sono sostituibili', () => {
+      wrapper = mountSel({
+        labels: {
+          selectAll: 'Tutte',
+          selectRow: 'Riga',
+          selectedCount: (n: number) => `${n} scelte`,
+        },
+      })
+      expect(headerBox().attributes('aria-label')).toBe('Tutte')
+      expect(checkbox(0).attributes('aria-label')).toBe('Riga')
+      expect(wrapper.get('[role="status"]').text()).toContain('0 scelte')
+    })
+  })
 })

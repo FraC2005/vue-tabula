@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends object">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useSlots } from 'vue'
 import type {
   CellSlotProps,
   ColumnDef,
@@ -7,6 +7,7 @@ import type {
   FilterValue,
   HeaderSlotProps,
   RowKey,
+  SelectionMode,
   TableClasses,
   TableLabels,
   TableState,
@@ -19,6 +20,13 @@ import { DEFAULT_LABELS } from '../core/labels.js'
 import { clampPosition, moveGridPosition } from '../core/navigation.js'
 import type { GridPosition } from '../core/navigation.js'
 import { paginate } from '../core/paginate.js'
+import {
+  deselectKeys,
+  selectKeys,
+  selectRange,
+  selectionState,
+  toggleKey,
+} from '../core/selection.js'
 import { sortIndices, toggleSort } from '../core/sort.js'
 import { DEFAULT_PAGE_SIZE, createDefaultState, setColumnFilter } from '../core/state.js'
 
@@ -42,6 +50,10 @@ const props = withDefaults(
      * si digita. 0 = subito. I filtri a selezione si applicano sempre subito.
      */
     debounce?: number
+    /** Modalità di selezione delle righe (per `rowKey`, anche tra le pagine). */
+    selection?: SelectionMode
+    /** Con la selezione attiva, mostra la colonna con le checkbox. */
+    selectionColumn?: boolean
     /** Classi aggiuntive per le parti principali. */
     classes?: TableClasses
     /** Testi dell'interfaccia (parziali: gli altri restano di default). */
@@ -54,6 +66,8 @@ const props = withDefaults(
     searchable: true,
     paginated: true,
     debounce: 250,
+    selection: 'none',
+    selectionColumn: true,
     classes: () => ({}),
     labels: () => ({}),
   },
@@ -81,6 +95,10 @@ defineSlots<{
     setPage: (page: number) => void
   }): unknown
 }>()
+
+/** Chiavi delle righe selezionate; `v-model:selected` è facoltativo. */
+const selectedModel = defineModel<RowKey[]>('selected', { default: () => [] })
+const slots = useSlots()
 
 const state = ref<TableState>(createDefaultState({ pageSize: props.pageSize }))
 
@@ -162,7 +180,7 @@ function onSort(column: ColumnDef<T>, event: MouseEvent | KeyboardEvent) {
     page: 1,
   }
   // Dopo il clic il focus torna sulla cella dell'intestazione (unico tab stop della riga).
-  void focusCell({ row: 0, col: props.columns.indexOf(column) })
+  void focusCell({ row: 0, col: props.columns.indexOf(column) + colOffset.value })
 }
 
 function setSearch(value: string) {
@@ -283,6 +301,82 @@ function setSelectedOption(column: ColumnDef<T>, raw: string) {
   setFilter(column, option?.value)
 }
 
+// --- Selezione delle righe (per chiave, quindi anche tra pagine, ordinamenti e filtri) ---
+
+const selectionEnabled = computed(() => props.selection !== 'none')
+const showSelectColumn = computed(() => selectionEnabled.value && props.selectionColumn)
+/** Posizioni occupate dalla colonna di selezione davanti alle colonne di dati. */
+const colOffset = computed(() => (showSelectColumn.value ? 1 : 0))
+const selectedSet = computed(() => new Set(selectedModel.value))
+const selectedCount = computed(() => selectedModel.value.length)
+/** Chiavi di tutte le righe filtrate, nell'ordine mostrato (servono a intervalli e "tutte"). */
+const filteredKeys = computed(() =>
+  selectionEnabled.value ? sorted.value.map((i) => keyOf(props.rows[i] as T)) : [],
+)
+const allState = computed(() => selectionState(selectedModel.value, filteredKeys.value))
+const selectionSummary = computed(() => text.value.selectedCount(selectedCount.value))
+/** Senza il riepilogo della paginazione di default, l'annuncio ha una regione propria. */
+const showSelectionStatus = computed(
+  () => selectionEnabled.value && (!props.paginated || !!slots.pagination),
+)
+let anchorKey: RowKey | null = null
+
+function isSelected(row: T): boolean {
+  return selectedSet.value.has(keyOf(row))
+}
+
+/** Seleziona/deseleziona una riga; con `range` aggiunge l'intervallo dall'ultima riga toccata. */
+function selectRow(row: T, range: boolean): RowKey[] {
+  const key = keyOf(row)
+  const next =
+    range && props.selection === 'multiple'
+      ? selectRange(selectedModel.value, filteredKeys.value, anchorKey, key)
+      : toggleKey(selectedModel.value, key, props.selection)
+  anchorKey = key
+  selectedModel.value = next
+  return next
+}
+
+/** Checkbox dell'intestazione: seleziona tutte le righe filtrate, o le deseleziona se già tutte. */
+function toggleAll() {
+  if (props.selection !== 'multiple') return
+  selectedModel.value =
+    allState.value === 'all'
+      ? deselectKeys(selectedModel.value, filteredKeys.value)
+      : selectKeys(selectedModel.value, filteredKeys.value)
+}
+
+function selectAllFiltered() {
+  if (props.selection !== 'multiple') return
+  selectedModel.value = selectKeys(selectedModel.value, filteredKeys.value)
+}
+
+function clearSelection() {
+  anchorKey = null
+  selectedModel.value = []
+}
+
+function onHeaderCheckboxClick(event: MouseEvent) {
+  const willSelect = allState.value !== 'all' && filteredKeys.value.length > 0
+  toggleAll()
+  // La checkbox riflette l'esito calcolato, non quello nativo appena cambiato dal clic
+  // (con `v-model:selected` il genitore aggiorna lo stato solo dopo).
+  const input = event.target as HTMLInputElement
+  input.checked = willSelect
+  input.indeterminate = false
+}
+
+/** Clic su una riga: sulla checkbox seleziona; Maiusc+clic su una cella seleziona l'intervallo. */
+function onRowClick(row: T, event: MouseEvent) {
+  if (!selectionEnabled.value) return
+  const target = event.target as HTMLElement
+  const onCheckbox = target.classList.contains('vt-select-input')
+  if (!onCheckbox && !(event.shiftKey && props.selection === 'multiple')) return
+  const next = selectRow(row, event.shiftKey)
+  if (onCheckbox) (target as HTMLInputElement).checked = next.includes(keyOf(row))
+  else window.getSelection()?.removeAllRanges()
+}
+
 // --- Navigazione da tastiera (pattern ARIA grid, un solo tab stop con roving tabindex) ---
 //
 // Posizione logica: riga 0 = intestazione, riga 1 = filtri (se presenti), poi le righe della
@@ -293,7 +387,7 @@ const gridEl = ref<HTMLElement | null>(null)
 const active = ref<GridPosition>({ row: 0, col: 0 })
 const gridBounds = computed(() => ({
   rowCount: headerRowCount.value + visibleRows.value.length,
-  colCount: props.columns.length,
+  colCount: props.columns.length + colOffset.value,
 }))
 const activeCell = computed(() => clampPosition(active.value, gridBounds.value))
 
@@ -339,12 +433,39 @@ function onGridKeydown(event: KeyboardEvent) {
     return
   }
 
-  if (position.row === 0) {
+  const isBody = position.row >= headerRowCount.value
+  const isSelectCol = showSelectColumn.value && position.col === 0
+  const dataColumn = props.columns[position.col - colOffset.value]
+
+  // Selezione: Ctrl/Cmd+A (tutte le righe filtrate), Spazio sulla cella della checkbox,
+  // Maiusc+Spazio su qualunque cella di una riga.
+  if (selectionEnabled.value) {
+    if (event.key.toLowerCase() === 'a' && (event.ctrlKey || event.metaKey)) {
+      if (props.selection === 'multiple') {
+        event.preventDefault()
+        selectAllFiltered()
+        return
+      }
+    } else if (event.key === ' ') {
+      if (isBody && (event.shiftKey || isSelectCol)) {
+        event.preventDefault()
+        const row = visibleRows.value[position.row - headerRowCount.value]
+        if (row) selectRow(row, false)
+        return
+      }
+      if (position.row === 0 && isSelectCol) {
+        event.preventDefault()
+        toggleAll()
+        return
+      }
+    }
+  }
+
+  if (position.row === 0 && !isSelectCol) {
     // Cella d'intestazione: Invio o Spazio ordinano.
     if (event.key === 'Enter' || event.key === ' ') {
-      const column = props.columns[position.col]
       event.preventDefault()
-      if (column && isSortable(column)) onSort(column, event)
+      if (dataColumn && isSortable(dataColumn)) onSort(dataColumn, event)
       return
     }
   } else if (event.key === 'Enter' || event.key === 'F2') {
@@ -392,6 +513,8 @@ defineExpose({
   },
   /** Rimuove tutti i filtri di colonna e la ricerca globale. */
   clearFilters,
+  /** Deseleziona tutte le righe. */
+  clearSelection,
   /** Sposta il focus su una cella: riga 0 = intestazione, 1 = filtri (se presenti), poi le righe. */
   focusCell: (row: number, col = 0) => focusCell({ row, col }),
   /** Riporta ordinamento, filtri, ricerca e pagina ai valori iniziali. */
@@ -434,12 +557,33 @@ defineExpose({
       role="grid"
       :aria-label="ariaLabel"
       :aria-rowcount="total + headerRowCount"
-      :aria-colcount="columns.length"
+      :aria-colcount="columns.length + colOffset"
+      :aria-multiselectable="selection === 'multiple' ? true : undefined"
       @keydown="onGridKeydown"
       @focusin="onGridFocusin"
     >
       <div :class="['vt-header', classes.header]" role="rowgroup">
         <div :class="['vt-row', classes.row]" role="row" :aria-rowindex="1">
+          <div
+            v-if="showSelectColumn"
+            :class="['vt-header-cell', 'vt-select-cell', classes.headerCell]"
+            data-vt-row="0"
+            data-vt-col="0"
+            :tabindex="tab(0, 0)"
+            role="columnheader"
+            :aria-colindex="1"
+          >
+            <input
+              v-if="selection === 'multiple'"
+              type="checkbox"
+              class="vt-select-input"
+              tabindex="-1"
+              :checked="allState === 'all'"
+              :indeterminate="allState === 'some'"
+              :aria-label="text.selectAll"
+              @click="onHeaderCheckboxClick"
+            />
+          </div>
           <div
             v-for="(column, c) in columns"
             :key="column.id"
@@ -447,10 +591,10 @@ defineExpose({
             :style="cellStyle(column)"
             :data-align="column.align"
             data-vt-row="0"
-            :data-vt-col="c"
-            :tabindex="tab(0, c)"
+            :data-vt-col="c + colOffset"
+            :tabindex="tab(0, c + colOffset)"
             role="columnheader"
-            :aria-colindex="c + 1"
+            :aria-colindex="c + colOffset + 1"
             :aria-sort="ariaSort(column)"
           >
             <button
@@ -478,15 +622,24 @@ defineExpose({
           :aria-rowindex="2"
         >
           <div
+            v-if="showSelectColumn"
+            :class="['vt-filter-cell', 'vt-select-cell', classes.headerCell]"
+            data-vt-row="1"
+            data-vt-col="0"
+            :tabindex="tab(1, 0)"
+            role="gridcell"
+            :aria-colindex="1"
+          ></div>
+          <div
             v-for="(column, c) in columns"
             :key="column.id"
             :class="['vt-filter-cell', classes.headerCell]"
             :style="cellStyle(column)"
             data-vt-row="1"
-            :data-vt-col="c"
-            :tabindex="tab(1, c)"
+            :data-vt-col="c + colOffset"
+            :tabindex="tab(1, c + colOffset)"
             role="gridcell"
-            :aria-colindex="c + 1"
+            :aria-colindex="c + colOffset + 1"
           >
             <slot :name="`filter-${column.id}`" v-bind="filterSlotProps(column)">
               <input
@@ -550,10 +703,29 @@ defineExpose({
         <div
           v-for="(row, r) in visibleRows"
           :key="keyOf(row)"
-          :class="['vt-row', classes.row]"
+          :class="['vt-row', classes.row, { 'vt-row-selected': isSelected(row) }]"
           role="row"
           :aria-rowindex="headerRowCount + pageInfo.start + r + 1"
+          :aria-selected="selectionEnabled ? isSelected(row) : undefined"
+          @click="onRowClick(row, $event)"
         >
+          <div
+            v-if="showSelectColumn"
+            :class="['vt-cell', 'vt-select-cell', classes.cell]"
+            :data-vt-row="headerRowCount + r"
+            data-vt-col="0"
+            :tabindex="tab(headerRowCount + r, 0)"
+            role="gridcell"
+            :aria-colindex="1"
+          >
+            <input
+              type="checkbox"
+              class="vt-select-input"
+              tabindex="-1"
+              :checked="isSelected(row)"
+              :aria-label="text.selectRow"
+            />
+          </div>
           <div
             v-for="(column, c) in columns"
             :key="column.id"
@@ -561,10 +733,10 @@ defineExpose({
             :style="cellStyle(column)"
             :data-align="column.align"
             :data-vt-row="headerRowCount + r"
-            :data-vt-col="c"
-            :tabindex="tab(headerRowCount + r, c)"
+            :data-vt-col="c + colOffset"
+            :tabindex="tab(headerRowCount + r, c + colOffset)"
             role="gridcell"
-            :aria-colindex="c + 1"
+            :aria-colindex="c + colOffset + 1"
           >
             <slot
               :name="`cell-${column.id}`"
@@ -591,6 +763,10 @@ defineExpose({
       </div>
     </div>
 
+    <div v-if="showSelectionStatus" class="vt-selection-status" role="status" aria-live="polite">
+      {{ selectionSummary }}
+    </div>
+
     <slot
       v-if="paginated"
       name="pagination"
@@ -601,7 +777,9 @@ defineExpose({
       :set-page="setPage"
     >
       <div :class="['vt-pagination', classes.pagination]">
-        <span class="vt-summary" role="status" aria-live="polite">{{ summary }}</span>
+        <span class="vt-summary" role="status" aria-live="polite">
+          {{ summary }}<template v-if="selectionEnabled"> · {{ selectionSummary }}</template>
+        </span>
         <label class="vt-page-size">
           {{ text.pageSize }}
           <select

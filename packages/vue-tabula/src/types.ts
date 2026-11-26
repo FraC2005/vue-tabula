@@ -24,6 +24,9 @@ export interface NumberRange {
  */
 export type FilterValue = FilterPrimitive | FilterPrimitive[] | NumberRange
 
+/** Modalità di selezione delle righe. */
+export type SelectionMode = 'none' | 'single' | 'multiple'
+
 /** Tipo di controllo mostrato per filtrare una colonna. */
 export type FilterKind = 'text' | 'select' | 'number'
 
@@ -131,6 +134,12 @@ export interface TableLabels {
   filterMin: string
   filterMax: string
   clearFilters: string
+  /** Etichetta accessibile della checkbox che seleziona tutte le righe. */
+  selectAll: string
+  /** Etichetta accessibile della checkbox di una riga. */
+  selectRow: string
+  /** Annuncio del numero di righe selezionate, es. "3 selected". */
+  selectedCount: (count: number) => string
   /** Riepilogo letto dagli screen reader, es. "1–25 di 100". */
   summary: (range: { start: number; end: number; total: number }) => string
   /** Descrizione della pagina corrente, es. "Pagina 2 di 4". */

@@ -14,6 +14,10 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il p
 - Etichette `filterColumn`, `filterAll`, `filterMin`, `filterMax`, `clearFilters` e classi `filterRow`, `filterInput`.
 - Navigazione da tastiera secondo il pattern ARIA grid: un solo tab stop (roving tabindex), frecce, Home/Fine (con Ctrl: angoli), PageUp/PageDown, Invio o F2 per entrare nel controllo di una cella, Esc per uscirne (applicando subito il testo digitato), Invio/Spazio sulle intestazioni per ordinare. Metodo esposto `focusCell` e funzioni pure `moveGridPosition` e `clampPosition`.
 - Prop `debounce` (default 250 ms) per ricerca globale e filtri di testo e numerici, con applicazione immediata su blur, Invio, Esc e `getState()`; i filtri a selezione restano immediati. Funzione `createDebouncer`.
+- Selezione delle righe per `rowKey` (prop `selection`: `single` o `multiple`), con colonna di checkbox opzionale (`selectionColumn`) e `v-model:selected` facoltativo con le chiavi selezionate. La selezione resta tra pagine, ordinamenti e filtri.
+- Interazioni: checkbox nell'intestazione con stato indeterminato (seleziona tutte le righe filtrate), Maiusc+clic per un intervallo (anche tra pagine), Spazio sulla cella della checkbox, Maiusc+Spazio su qualunque cella, Ctrl/Cmd+A in modalità `multiple`.
+- Accessibilità: `aria-selected` sulle righe, `aria-multiselectable` sulla griglia, annuncio del numero di righe selezionate nel `role="status"` (con regione propria se manca il riepilogo di paginazione). Con la colonna di selezione, `aria-colcount` e `aria-colindex` la includono.
+- Metodo esposto `clearSelection` e funzioni pure `toggleKey`, `selectRange`, `selectKeys`, `deselectKeys`, `selectionState`; tipi `SelectionMode` e `SelectionState`; etichette `selectAll`, `selectRow`, `selectedCount`.
 - README del pacchetto: sezione Requisiti (Vue 3.x, TypeScript 6.x con vue-tsc).
 
 ### Modificato
