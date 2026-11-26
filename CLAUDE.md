@@ -84,6 +84,7 @@ Funzioni del componente:
 
 - **0.3.0, selezione in modalità server:** la checkbox dell'intestazione e Ctrl/Cmd+A selezionano **solo le righe della pagina corrente** (lato server `rows` contiene solo la pagina). Le chiavi selezionate in altre pagine restano nella selezione e nel conteggio (chiavi orfane per costruzione): il componente non le pota da solo; `pruneSelection` è per chi ha tutti i dati. Anche lo stato indeterminato dell'intestazione va calcolato sulla pagina corrente.
 - I clic su elementi interattivi nelle celle (`a, button, input, select, textarea, [contenteditable], [role="button"]`) non attivano la selezione né l'intervallo con Maiusc; eccezione: la checkbox di selezione.
+- `v-model:state` (0.2.0): prop `state` + evento `update:state` (non `defineModel`, per controllare il confronto). Lo stato in ingresso passa sempre da `validateState` (`core/stateValidation.ts`, mai lancia; versione futura → default; `MIGRATIONS` vuota finché esiste solo la v1). Uscita: si emette solo se `!jsonEqual(stato, props.state)` (confronto strutturale, anti-cicli); `props.state` che torna `undefined` = reset. La pagina si clampa dopo i filtri ripristinati, ma non se `rows` è vuoto (dati in caricamento). Il genitore deve aggiornare in modo sincrono. `usePersistentTableState` legge dopo `onMounted` (SSR/idratazione) e non lancia mai.
 
 ### Stile
 

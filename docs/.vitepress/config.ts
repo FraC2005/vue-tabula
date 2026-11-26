@@ -20,6 +20,7 @@ export default defineConfig({
           { text: 'Ordinamento, ricerca e pagine', link: '/guide/sorting-search-pagination' },
           { text: 'Filtri per colonna', link: '/guide/filters' },
           { text: 'Selezione delle righe', link: '/guide/selection' },
+          { text: 'Stato e persistenza', link: '/guide/state' },
           { text: 'Celle personalizzate', link: '/guide/slots' },
           { text: 'Stile', link: '/guide/styling' },
           { text: 'Accessibilità', link: '/guide/accessibility' },

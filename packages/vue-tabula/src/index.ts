@@ -19,6 +19,20 @@ export {
   toggleKey,
 } from './core/selection.js'
 export type { SelectionState } from './core/selection.js'
+export { jsonEqual } from './core/equal.js'
+export {
+  STATE_VERSION,
+  clampStatePage,
+  cloneState,
+  parseState,
+  validateState,
+} from './core/stateValidation.js'
+export type { StateColumn, StateValidationContext } from './core/stateValidation.js'
+export { usePersistentTableState } from './composables/usePersistentTableState.js'
+export type {
+  PersistentTableState,
+  PersistentTableStateOptions,
+} from './composables/usePersistentTableState.js'
 export { createDebouncer } from './core/debounce.js'
 export type { Debouncer } from './core/debounce.js'
 export { clampPosition, moveGridPosition } from './core/navigation.js'

@@ -5,8 +5,15 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il p
 
 ## [Non rilasciato]
 
+## [0.2.0] - 2026-11-26
+
 ### Aggiunto
 
+- `v-model:state`: lo stato della tabella (`TableState`: ordinamento, filtri, ricerca globale, pagina e dimensione di pagina) è emesso con `update:state` come oggetto JSON semplice e si può ripristinare passandolo come prop. Il confronto con lo stato del genitore è per contenuto, non per riferimento: quando il genitore ripassa lo stato ricevuto il componente non riemette, quindi niente cicli. Passare `undefined` dopo uno stato riporta la tabella ai valori iniziali.
+- Ripristino validato: chiavi sconosciute e colonne inesistenti ignorate, valori di tipo sbagliato scartati, filtri incompatibili con `column.filter` scartati, `page` riportata nell'intervallo valido (dopo i filtri ripristinati; non con i dati ancora in caricamento), `pageSize` tra quelli ammessi, `version` per le migrazioni future (una versione più recente di quella nota dà lo stato di default). Un input corrotto non lancia mai e dà lo stato di default; la pagina scende all'ultima valida se i dati diminuiscono.
+- `usePersistentTableState(key, { storage })`: salva lo stato in `localStorage` o `sessionStorage` e lo ripristina al ricaricamento. Compatibile con SSR (nessun accesso a `window` fuori dal client; lettura dopo il montaggio) e tollerante a storage pieno, disabilitato o con dati corrotti (errore esposto in `error`, nessuna eccezione). Include `reset()`.
+- Funzioni pure `validateState`, `parseState`, `clampStatePage`, `cloneState`, `jsonEqual`, costante `STATE_VERSION`; tipi `StateValidationContext`, `StateColumn`, `PersistentTableState`, `PersistentTableStateOptions`.
+- Documentazione: pagina «Stato e persistenza» con esempio di stato salvato e ripristinato al ricaricamento e pulsante di reset; pagine sui filtri e sulla selezione con le relative demo.
 - Filtri per colonna (`filter: 'text' | 'select' | 'number'`) con riga di controlli sotto le intestazioni, `filterOptions`, `filterFn` e slot `filter-<columnId>`. I filtri si combinano in AND tra loro e con la ricerca globale; ogni cambio riporta a pagina 1.
 - Pulsante «Clear filters» e metodo esposto `clearFilters`.
 - Funzioni pure `columnFilterIndices`, `isFilterActive`, `selectOptions`, `normalizeOptions` e `setColumnFilter`; `globalSearchIndices` accetta un elenco di indici da considerare.

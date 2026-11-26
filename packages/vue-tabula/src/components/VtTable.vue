@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends object">
-import { computed, nextTick, onBeforeUnmount, ref, useSlots } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue'
 import type {
   CellSlotProps,
   ColumnDef,
@@ -15,6 +15,7 @@ import type {
 import { getCellValue, getRowKey } from '../core/accessor.js'
 import { columnFilterIndices, isFilterActive, selectOptions } from '../core/columnFilters.js'
 import { createDebouncer } from '../core/debounce.js'
+import { jsonEqual } from '../core/equal.js'
 import { globalSearchIndices } from '../core/filter.js'
 import { DEFAULT_LABELS } from '../core/labels.js'
 import { clampPosition, moveGridPosition } from '../core/navigation.js'
@@ -29,6 +30,7 @@ import {
 } from '../core/selection.js'
 import { sortIndices, toggleSort } from '../core/sort.js'
 import { DEFAULT_PAGE_SIZE, createDefaultState, setColumnFilter } from '../core/state.js'
+import { clampStatePage, cloneState, validateState } from '../core/stateValidation.js'
 
 const props = withDefaults(
   defineProps<{
@@ -50,6 +52,12 @@ const props = withDefaults(
      * si digita. 0 = subito. I filtri a selezione si applicano sempre subito.
      */
     debounce?: number
+    /**
+     * Stato della tabella (`v-model:state`): ordinamento, filtri, ricerca, pagina… serializzabile
+     * in JSON. Facoltativo. Lo stato ricevuto viene validato; chi lo aggiorna deve farlo in modo
+     * sincrono. Passare `undefined` dopo uno stato riporta la tabella ai valori iniziali.
+     */
+    state?: TableState
     /** Modalità di selezione delle righe (per `rowKey`, anche tra le pagine). */
     selection?: SelectionMode
     /** Con la selezione attiva, mostra la colonna con le checkbox. */
@@ -66,12 +74,18 @@ const props = withDefaults(
     searchable: true,
     paginated: true,
     debounce: 250,
+    state: undefined,
     selection: 'none',
     selectionColumn: true,
     classes: () => ({}),
     labels: () => ({}),
   },
 )
+
+const emit = defineEmits<{
+  /** Lo stato è cambiato (ordinamento, filtri, ricerca, pagina…). Si emette solo se differisce da `state`. */
+  'update:state': [state: TableState]
+}>()
 
 defineSlots<{
   /** Slot di fallback per qualsiasi cella. */
@@ -100,7 +114,29 @@ defineSlots<{
 const selectedModel = defineModel<RowKey[]>('selected', { default: () => [] })
 const slots = useSlots()
 
-const state = ref<TableState>(createDefaultState({ pageSize: props.pageSize }))
+const stateContext = computed(() => ({
+  columns: props.columns,
+  pageSizeOptions: props.pageSizeOptions,
+  defaultPageSize: props.pageSize,
+}))
+
+/**
+ * Valida uno stato in ingresso e ne porta la pagina nei limiti. Se `rows` è ancora vuoto (dati
+ * in caricamento) la pagina si lascia com'è: non si può sapere quante pagine ci saranno.
+ */
+function normalizeIncoming(raw: unknown): TableState {
+  const valid = validateState(raw, stateContext.value)
+  if (!props.paginated || props.rows.length === 0) return valid
+  const byColumn = columnFilterIndices(props.rows, props.columns, valid.filters)
+  const found = globalSearchIndices(props.rows, props.columns, valid.globalSearch, byColumn)
+  return clampStatePage(valid, found.length)
+}
+
+const state = ref<TableState>(
+  props.state === undefined
+    ? createDefaultState({ pageSize: props.pageSize })
+    : normalizeIncoming(props.state),
+)
 
 const text = computed<TableLabels>(() => ({ ...DEFAULT_LABELS, ...props.labels }))
 
@@ -144,6 +180,50 @@ function delay(): number {
 /** Applica subito tutte le bozze in attesa (blur, Invio, Esc, `getState`). */
 function flushPending() {
   debouncer.flush()
+}
+
+// --- v-model:state: validato in ingresso, senza cicli in uscita ---
+
+// Il genitore ci passa uno stato: lo adottiamo (validato) solo se differisce, per contenuto,
+// da quello che abbiamo già. Così l'eco di un nostro `update:state` non fa nulla.
+watch(
+  () => props.state,
+  (incoming, previous) => {
+    if (incoming === undefined) {
+      if (previous !== undefined) resetState()
+      return
+    }
+    if (jsonEqual(incoming, state.value)) return
+    discardPending()
+    state.value = normalizeIncoming(incoming)
+  },
+)
+
+// Emettiamo solo se il nostro stato differisce, per contenuto, da quello del genitore.
+watch(state, (current) => {
+  if (!jsonEqual(current, props.state)) emit('update:state', cloneState(current))
+})
+
+// Se i dati cambiano e la pagina non esiste più, lo stato viene riportato all'ultima valida.
+watch(
+  () => pageInfo.value.page,
+  (page) => {
+    if (props.paginated && total.value > 0 && state.value.page !== page) {
+      state.value = { ...state.value, page }
+    }
+  },
+)
+
+onMounted(() => {
+  // Uno stato ricevuto e poi corretto dalla validazione va comunicato al genitore.
+  if (props.state !== undefined && !jsonEqual(props.state, state.value)) {
+    emit('update:state', cloneState(state.value))
+  }
+})
+
+function resetState() {
+  discardPending()
+  state.value = createDefaultState({ pageSize: props.pageSize })
 }
 
 function discardPending() {
@@ -520,7 +600,7 @@ defineExpose({
   /** Copia dello stato corrente (serializzabile in JSON); applica prima le bozze in attesa. */
   getState: (): TableState => {
     flushPending()
-    return JSON.parse(JSON.stringify(state.value)) as TableState
+    return cloneState(state.value)
   },
   /** Rimuove tutti i filtri di colonna e la ricerca globale. */
   clearFilters,
@@ -529,10 +609,7 @@ defineExpose({
   /** Sposta il focus su una cella: riga 0 = intestazione, 1 = filtri (se presenti), poi le righe. */
   focusCell: (row: number, col = 0) => focusCell({ row, col }),
   /** Riporta ordinamento, filtri, ricerca e pagina ai valori iniziali. */
-  resetState: () => {
-    discardPending()
-    state.value = createDefaultState({ pageSize: props.pageSize })
-  },
+  resetState,
 })
 </script>
 
