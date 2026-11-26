@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import type {
   CellSlotProps,
   ColumnDef,
+  FilterSlotProps,
+  FilterValue,
   HeaderSlotProps,
   RowKey,
   TableClasses,
@@ -10,11 +12,12 @@ import type {
   TableState,
 } from '../types.js'
 import { getCellValue } from '../core/accessor.js'
+import { columnFilterIndices, isFilterActive, selectOptions } from '../core/columnFilters.js'
 import { globalSearchIndices } from '../core/filter.js'
 import { DEFAULT_LABELS } from '../core/labels.js'
 import { paginate } from '../core/paginate.js'
 import { sortIndices, toggleSort } from '../core/sort.js'
-import { DEFAULT_PAGE_SIZE, createDefaultState } from '../core/state.js'
+import { DEFAULT_PAGE_SIZE, createDefaultState, setColumnFilter } from '../core/state.js'
 
 const props = withDefaults(
   defineProps<{
@@ -54,6 +57,8 @@ defineSlots<{
   [name: `cell-${string}`]: ((props: CellSlotProps<T>) => unknown) | undefined
   /** Slot per l'intestazione di una colonna: `header-<columnId>`. */
   [name: `header-${string}`]: ((props: HeaderSlotProps<T>) => unknown) | undefined
+  /** Controllo di filtro di una colonna: `filter-<columnId>`. */
+  [name: `filter-${string}`]: ((props: FilterSlotProps<T>) => unknown) | undefined
   /** Contenuto mostrato quando non ci sono righe da visualizzare. */
   empty?(): unknown
   /** Sostituisce la barra di ricerca di default. */
@@ -72,10 +77,13 @@ const state = ref<TableState>(createDefaultState({ pageSize: props.pageSize }))
 
 const text = computed<TableLabels>(() => ({ ...DEFAULT_LABELS, ...props.labels }))
 
-// Pipeline: ricerca → ordinamento → pagina. Ogni passo lavora su indici e si ricalcola
-// solo quando cambiano i propri input (computed memoizza).
+// Pipeline: filtri di colonna → ricerca globale → ordinamento → pagina. Ogni passo lavora
+// su indici e si ricalcola solo quando cambiano i propri input (computed memoizza).
+const columnFiltered = computed(() =>
+  columnFilterIndices(props.rows, props.columns, state.value.filters),
+)
 const filtered = computed(() =>
-  globalSearchIndices(props.rows, props.columns, state.value.globalSearch),
+  globalSearchIndices(props.rows, props.columns, state.value.globalSearch, columnFiltered.value),
 )
 const sorted = computed(() =>
   sortIndices(props.rows, props.columns, state.value.sort, filtered.value),
@@ -130,6 +138,76 @@ function setPageSize(size: number) {
   state.value = { ...state.value, pageSize: size, page: 1 }
 }
 
+// --- Filtri di colonna ---
+
+const filterColumns = computed(() => props.columns.filter((c) => c.filter))
+const hasFilterRow = computed(() => filterColumns.value.length > 0)
+/** Righe occupate dall'intestazione (etichette + eventuale riga dei filtri). */
+const headerRowCount = computed(() => (hasFilterRow.value ? 2 : 1))
+const hasActiveFilters = computed(() =>
+  Object.values(state.value.filters).some((f) => isFilterActive(f)),
+)
+
+function setFilter(column: ColumnDef<T>, value: FilterValue | undefined) {
+  state.value = setColumnFilter(state.value, column.id, value)
+}
+
+function clearFilters() {
+  state.value = { ...state.value, filters: {}, globalSearch: '', page: 1 }
+}
+
+function filterSlotProps(column: ColumnDef<T>): FilterSlotProps<T> {
+  return {
+    column,
+    value: state.value.filters[column.id],
+    setValue: (value) => setFilter(column, value),
+  }
+}
+
+function textFilter(column: ColumnDef<T>): string {
+  const value = state.value.filters[column.id]
+  return typeof value === 'string' ? value : ''
+}
+
+function rangeBound(column: ColumnDef<T>, bound: 'min' | 'max'): string {
+  const value = state.value.filters[column.id]
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return ''
+  const n = value[bound]
+  return typeof n === 'number' ? String(n) : ''
+}
+
+function setRangeBound(column: ColumnDef<T>, bound: 'min' | 'max', raw: string) {
+  const current = state.value.filters[column.id]
+  const range =
+    typeof current === 'object' && current !== null && !Array.isArray(current) ? current : {}
+  const n = raw.trim() === '' ? undefined : Number(raw)
+  const next = { ...range, [bound]: n === undefined || Number.isNaN(n) ? undefined : n }
+  setFilter(column, { min: next.min, max: next.max })
+}
+
+// Opzioni dei filtri `select`, ricalcolate solo quando cambiano righe o colonne.
+const optionsByColumn = computed(() => {
+  const map = new Map<string, ReturnType<typeof selectOptions>>()
+  for (const column of filterColumns.value) {
+    if (column.filter === 'select') map.set(column.id, selectOptions(props.rows, column))
+  }
+  return map
+})
+
+/** Indice (come stringa) dell'opzione selezionata; '' = nessun filtro. */
+function selectedOption(column: ColumnDef<T>): string {
+  const value = state.value.filters[column.id]
+  const current = Array.isArray(value) ? value[0] : value
+  const options = optionsByColumn.value.get(column.id) ?? []
+  const index = options.findIndex((o) => o.value === current)
+  return index === -1 ? '' : String(index)
+}
+
+function setSelectedOption(column: ColumnDef<T>, raw: string) {
+  const option = raw === '' ? undefined : optionsByColumn.value.get(column.id)?.[Number(raw)]
+  setFilter(column, option?.value)
+}
+
 function cellStyle(column: ColumnDef<T>) {
   return {
     flex: column.width ? `0 0 ${column.width}px` : '1 1 0',
@@ -149,7 +227,9 @@ const summary = computed(() =>
 defineExpose({
   /** Copia dello stato corrente (serializzabile in JSON). */
   getState: (): TableState => JSON.parse(JSON.stringify(state.value)) as TableState,
-  /** Riporta ordinamento, ricerca e pagina ai valori iniziali. */
+  /** Rimuove tutti i filtri di colonna e la ricerca globale. */
+  clearFilters,
+  /** Riporta ordinamento, filtri, ricerca e pagina ai valori iniziali. */
   resetState: () => {
     state.value = createDefaultState({ pageSize: props.pageSize })
   },
@@ -159,8 +239,9 @@ defineExpose({
 <template>
   <div :class="['vt-root', classes.root]">
     <slot name="toolbar" :search="state.globalSearch" :set-search="setSearch">
-      <div v-if="searchable" :class="['vt-toolbar', classes.toolbar]">
+      <div v-if="searchable || hasFilterRow" :class="['vt-toolbar', classes.toolbar]">
         <input
+          v-if="searchable"
           :class="['vt-search', classes.search]"
           type="search"
           :value="state.globalSearch"
@@ -168,6 +249,14 @@ defineExpose({
           :placeholder="text.searchPlaceholder"
           @input="setSearch(($event.target as HTMLInputElement).value)"
         />
+        <button
+          v-if="hasActiveFilters || state.globalSearch"
+          type="button"
+          class="vt-clear-filters"
+          @click="clearFilters"
+        >
+          {{ text.clearFilters }}
+        </button>
       </div>
     </slot>
 
@@ -175,7 +264,7 @@ defineExpose({
       class="vt-grid"
       role="grid"
       :aria-label="ariaLabel"
-      :aria-rowcount="total + 1"
+      :aria-rowcount="total + headerRowCount"
       :aria-colcount="columns.length"
     >
       <div :class="['vt-header', classes.header]" role="rowgroup">
@@ -207,6 +296,66 @@ defineExpose({
             <slot v-else :name="`header-${column.id}`" :column="column">{{ column.header }}</slot>
           </div>
         </div>
+        <div
+          v-if="hasFilterRow"
+          :class="['vt-row', 'vt-filter-row', classes.row, classes.filterRow]"
+          role="row"
+          :aria-rowindex="2"
+        >
+          <div
+            v-for="(column, c) in columns"
+            :key="column.id"
+            :class="['vt-filter-cell', classes.headerCell]"
+            :style="cellStyle(column)"
+            role="gridcell"
+            :aria-colindex="c + 1"
+          >
+            <slot :name="`filter-${column.id}`" v-bind="filterSlotProps(column)">
+              <input
+                v-if="column.filter === 'text'"
+                :class="['vt-filter-input', classes.filterInput]"
+                type="text"
+                :value="textFilter(column)"
+                :aria-label="text.filterColumn(column.header)"
+                @input="setFilter(column, ($event.target as HTMLInputElement).value)"
+              />
+              <select
+                v-else-if="column.filter === 'select'"
+                :class="['vt-filter-input', classes.filterInput]"
+                :value="selectedOption(column)"
+                :aria-label="text.filterColumn(column.header)"
+                @change="setSelectedOption(column, ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">{{ text.filterAll }}</option>
+                <option
+                  v-for="(option, i) in optionsByColumn.get(column.id)"
+                  :key="i"
+                  :value="String(i)"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+              <span v-else-if="column.filter === 'number'" class="vt-filter-range">
+                <input
+                  :class="['vt-filter-input', classes.filterInput]"
+                  type="number"
+                  :value="rangeBound(column, 'min')"
+                  :placeholder="text.filterMin"
+                  :aria-label="`${text.filterColumn(column.header)}: ${text.filterMin}`"
+                  @input="setRangeBound(column, 'min', ($event.target as HTMLInputElement).value)"
+                />
+                <input
+                  :class="['vt-filter-input', classes.filterInput]"
+                  type="number"
+                  :value="rangeBound(column, 'max')"
+                  :placeholder="text.filterMax"
+                  :aria-label="`${text.filterColumn(column.header)}: ${text.filterMax}`"
+                  @input="setRangeBound(column, 'max', ($event.target as HTMLInputElement).value)"
+                />
+              </span>
+            </slot>
+          </div>
+        </div>
       </div>
 
       <div :class="['vt-body', classes.body]" role="rowgroup">
@@ -215,7 +364,7 @@ defineExpose({
           :key="keyOf(row)"
           :class="['vt-row', classes.row]"
           role="row"
-          :aria-rowindex="pageInfo.start + r + 2"
+          :aria-rowindex="headerRowCount + pageInfo.start + r + 1"
         >
           <div
             v-for="(column, c) in columns"
@@ -238,7 +387,12 @@ defineExpose({
             </slot>
           </div>
         </div>
-        <div v-if="visibleRows.length === 0" class="vt-row" role="row" :aria-rowindex="2">
+        <div
+          v-if="visibleRows.length === 0"
+          class="vt-row"
+          role="row"
+          :aria-rowindex="headerRowCount + 1"
+        >
           <div :class="['vt-empty', classes.empty]" role="gridcell" :aria-colspan="columns.length">
             <slot name="empty">{{ text.empty }}</slot>
           </div>

@@ -231,4 +231,108 @@ describe('VtTable', () => {
       expect(vm.getState().globalSearch).toBe('')
     })
   })
+
+  describe('filtri per colonna', () => {
+    interface P2 {
+      id: number
+      nome: string
+      citta: string
+      eta: number
+    }
+    const people: P2[] = [
+      { id: 1, nome: 'Ada', citta: 'Londra', eta: 36 },
+      { id: 2, nome: 'Linus', citta: 'Helsinki', eta: 54 },
+      { id: 3, nome: 'Grace', citta: 'Londra', eta: 85 },
+    ]
+    const cols: ColumnDef<P2>[] = [
+      { id: 'nome', header: 'Nome', filter: 'text' },
+      { id: 'citta', header: 'Città', filter: 'select' },
+      { id: 'eta', header: 'Età', filter: 'number' },
+    ]
+    const mountFilters = () =>
+      mount(VtTable as unknown as Component, {
+        props: { rows: people, columns: cols, rowKey: 'id' },
+      })
+    const bodyNames = (w: ReturnType<typeof mountFilters>) =>
+      w.findAll('.vt-body [role="gridcell"][aria-colindex="1"]').map((c) => c.text())
+
+    it('mostra la riga dei filtri solo se una colonna dichiara filter', () => {
+      expect(mountFilters().find('.vt-filter-row').exists()).toBe(true)
+      expect(mountTable({ rows, columns, rowKey: 'id' }).find('.vt-filter-row').exists()).toBe(
+        false,
+      )
+    })
+
+    it('tiene coerenti aria-rowindex e aria-rowcount con la riga dei filtri', () => {
+      const wrapper = mountFilters()
+      expect(wrapper.get('[role="grid"]').attributes('aria-rowcount')).toBe('5')
+      expect(wrapper.get('.vt-filter-row').attributes('aria-rowindex')).toBe('2')
+      expect(wrapper.get('.vt-body [role="row"]').attributes('aria-rowindex')).toBe('3')
+    })
+
+    it('filtra con il campo di testo e dà un nome accessibile ai controlli', async () => {
+      const wrapper = mountFilters()
+      const input = wrapper.get('input[aria-label="Filter Nome"]')
+      await input.setValue('gra')
+      expect(bodyNames(wrapper)).toEqual(['Grace'])
+    })
+
+    it('filtra con la selezione, con opzioni ricavate dalle righe', async () => {
+      const wrapper = mountFilters()
+      const select = wrapper.get('select[aria-label="Filter Città"]')
+      expect(select.findAll('option').map((o) => o.text())).toEqual(['All', 'Helsinki', 'Londra'])
+      await select.setValue('1')
+      expect(bodyNames(wrapper)).toEqual(['Ada', 'Grace'])
+      await select.setValue('')
+      expect(bodyNames(wrapper)).toHaveLength(3)
+    })
+
+    it('filtra con l’intervallo numerico', async () => {
+      const wrapper = mountFilters()
+      await wrapper.get('input[aria-label="Filter Età: Min"]').setValue('50')
+      expect(bodyNames(wrapper)).toEqual(['Linus', 'Grace'])
+      await wrapper.get('input[aria-label="Filter Età: Max"]').setValue('60')
+      expect(bodyNames(wrapper)).toEqual(['Linus'])
+    })
+
+    it('combina filtri e ricerca globale e riporta a pagina 1', async () => {
+      const wrapper = mountFilters()
+      await wrapper.get('select[aria-label="Filter Città"]').setValue('1')
+      await wrapper.get('input[type="search"]').setValue('grace')
+      expect(bodyNames(wrapper)).toEqual(['Grace'])
+    })
+
+    it('"Clear filters" azzera filtri e ricerca', async () => {
+      const wrapper = mountFilters()
+      await wrapper.get('input[aria-label="Filter Nome"]').setValue('gra')
+      await wrapper.get('.vt-clear-filters').trigger('click')
+      expect(bodyNames(wrapper)).toHaveLength(3)
+      expect(wrapper.find('.vt-clear-filters').exists()).toBe(false)
+    })
+
+    it('mostra lo stato vuoto con la riga dei filtri nell’indice corretto', async () => {
+      const wrapper = mountFilters()
+      await wrapper.get('input[aria-label="Filter Nome"]').setValue('zzz')
+      expect(wrapper.get('.vt-body [role="row"]').attributes('aria-rowindex')).toBe('3')
+      expect(wrapper.text()).toContain('No results')
+    })
+
+    it('espone filter-<columnId> per sostituire il controllo', async () => {
+      const wrapper = mount(VtTable as unknown as Component, {
+        props: { rows: people, columns: cols, rowKey: 'id' },
+        slots: {
+          'filter-nome': `<template #filter-nome="{ setValue }"><button class="mio" @click="setValue('linus')">x</button></template>`,
+        },
+      })
+      await wrapper.get('.mio').trigger('click')
+      expect(bodyNames(wrapper)).toEqual(['Linus'])
+    })
+
+    it('getState include i filtri attivi', async () => {
+      const wrapper = mountFilters()
+      await wrapper.get('input[aria-label="Filter Nome"]').setValue('ada')
+      const vm = wrapper.vm as unknown as { getState(): { filters: unknown } }
+      expect(vm.getState().filters).toEqual({ nome: 'ada' })
+    })
+  })
 })

@@ -77,6 +77,8 @@ Funzioni del componente:
 - Layout ARIA: `role="grid"` su un elemento interno (`.vt-grid`); toolbar e paginazione stanno fuori dal grid.
 - Testi dell'interfaccia in inglese di default, sostituibili con la prop `labels`. Le colonne sono ordinabili salvo `sortable: false`.
 
+- Filtri per colonna (0.2.0): `filter: 'text' | 'select' | 'number'`, valori JSON in `TableState.filters` (`string`, primitivo o array, `{min,max}`). Pipeline: filtri di colonna → ricerca globale → ordinamento → pagina. Tipo di confronto da `column.filter`, altrimenti dedotto dalla forma del valore; `filterFn` lo sostituisce. La riga dei filtri è una riga del grid (`aria-rowindex` 2) e sposta gli indici delle righe dati.
+
 ### Stile
 
 - Il CSS di default sta dentro `@layer vue-tabula`, con le variabili CSS di shadcn.

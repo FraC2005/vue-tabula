@@ -7,6 +7,29 @@ export interface SortEntry {
   dir: SortDirection
 }
 
+/** Valore primitivo confrontabile in un filtro a selezione. */
+export type FilterPrimitive = string | number | boolean
+
+/** Intervallo numerico di un filtro `number`; un estremo assente non limita. */
+export interface NumberRange {
+  min?: number | null
+  max?: number | null
+}
+
+/**
+ * Valore di un filtro di colonna, sempre serializzabile in JSON:
+ * - `string`: contiene il testo (filtro `text`);
+ * - `FilterPrimitive` o array di essi: uguale a (uno di) (filtro `select`);
+ * - `NumberRange`: compreso tra `min` e `max` (filtro `number`).
+ */
+export type FilterValue = FilterPrimitive | FilterPrimitive[] | NumberRange
+
+/** Tipo di controllo mostrato per filtrare una colonna. */
+export type FilterKind = 'text' | 'select' | 'number'
+
+/** Opzione di un filtro `select`: un valore, oppure valore con etichetta. */
+export type FilterOption = FilterPrimitive | { label: string; value: FilterPrimitive }
+
 /** Definizione di una colonna, generica sul tipo di riga. */
 export interface ColumnDef<T> {
   /** Identificatore univoco della colonna. */
@@ -23,6 +46,15 @@ export interface ColumnDef<T> {
   /** Funzione di confronto personalizzata per l'ordinamento. */
   sortFn?: (a: unknown, b: unknown) => number
   align?: 'left' | 'center' | 'right'
+  /** Mostra un controllo di filtro per questa colonna. */
+  filter?: FilterKind
+  /** Opzioni del filtro `select`; se omesse si ricavano dai valori presenti nelle righe. */
+  filterOptions?: FilterOption[]
+  /**
+   * Confronto personalizzato: sostituisce quello di default per questa colonna.
+   * Riceve il valore della cella, il valore del filtro e la riga.
+   */
+  filterFn?: (value: unknown, filterValue: FilterValue, row: T) => boolean
 }
 
 /**
@@ -32,7 +64,8 @@ export interface ColumnDef<T> {
 export interface TableState {
   version: 1
   sort: SortEntry[]
-  filters: Record<string, unknown>
+  /** Filtri attivi per id di colonna. */
+  filters: Record<string, FilterValue>
   globalSearch: string
   columnOrder: string[]
   columnVisibility: Record<string, boolean>
@@ -65,11 +98,22 @@ export interface TableClasses {
   search?: string
   header?: string
   headerCell?: string
+  filterRow?: string
+  filterInput?: string
   body?: string
   row?: string
   cell?: string
   empty?: string
   pagination?: string
+}
+
+/** Props passate allo slot `filter-<columnId>`. */
+export interface FilterSlotProps<T> {
+  column: ColumnDef<T>
+  /** Valore corrente del filtro (`undefined` se non attivo). */
+  value: FilterValue | undefined
+  /** Imposta il filtro; `undefined` (o un valore vuoto) lo rimuove. */
+  setValue: (value: FilterValue | undefined) => void
 }
 
 /** Testi dell'interfaccia, sostituibili per la traduzione. */
@@ -80,6 +124,13 @@ export interface TableLabels {
   previousPage: string
   nextPage: string
   pageSize: string
+  /** Etichetta accessibile del filtro di una colonna, es. "Filtra Nome". */
+  filterColumn: (header: string) => string
+  /** Voce "nessun filtro" dei filtri a selezione. */
+  filterAll: string
+  filterMin: string
+  filterMax: string
+  clearFilters: string
   /** Riepilogo letto dagli screen reader, es. "1–25 di 100". */
   summary: (range: { start: number; end: number; total: number }) => string
   /** Descrizione della pagina corrente, es. "Pagina 2 di 4". */

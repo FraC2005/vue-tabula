@@ -6,15 +6,16 @@ Tabella dati avanzata per Vue 3, scritta da zero: **zero dipendenze a runtime**,
 
 > Versione 0.x: l'API può cambiare tra versioni minori. Vedi il [CHANGELOG](https://github.com/FraC2005/vue-tabula/blob/main/CHANGELOG.md).
 
-## Funzioni (0.1.0)
+## Funzioni
 
 - Ordinamento su più colonne (Maiusc + clic)
 - Ricerca globale (senza distinguere maiuscole e accenti)
+- Filtri per colonna: testo, selezione e intervallo numerico, combinabili in AND
 - Paginazione lato client
 - Celle e intestazioni personalizzabili con slot, tipizzate sul tipo di riga
 - Stile con le variabili CSS di shadcn, senza Tailwind a runtime; classi sovrascrivibili tramite prop
 
-In arrivo: filtri per colonna, selezione, `v-model:state`, paginazione lato server, colonne ridimensionabili/riordinabili/fisse, righe espandibili, virtualizzazione (50.000 righe) e navigazione completa da tastiera.
+In arrivo: selezione, `v-model:state`, paginazione lato server, colonne ridimensionabili/riordinabili/fisse, righe espandibili, virtualizzazione (50.000 righe) e navigazione completa da tastiera.
 
 ## Installazione
 
@@ -22,7 +23,11 @@ In arrivo: filtri per colonna, selezione, `v-model:state`, paginazione lato serv
 pnpm add vue-tabula
 ```
 
-Richiede `vue` ^3.5.
+## Requisiti
+
+- **Vue 3.x** (3.5 o successivo, `vue` come peer dependency).
+- Con **vue-tsc** usa **TypeScript 6.x** finché vue-tsc non supporta TypeScript 7.
+- Nessuna dipendenza a runtime.
 
 ## Uso
 

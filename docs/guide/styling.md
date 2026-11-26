@@ -39,7 +39,7 @@ La prop `classes` aggiunge classi alle parti principali (si sommano a quelle di 
 <VtTable :classes="{ root: 'shadow-lg', headerCell: 'uppercase text-xs', cell: 'py-1' }" ... />
 ```
 
-Parti disponibili: `root`, `toolbar`, `search`, `header`, `headerCell`, `body`, `row`, `cell`, `empty`, `pagination`.
+Parti disponibili: `root`, `toolbar`, `search`, `header`, `headerCell`, `filterRow`, `filterInput`, `body`, `row`, `cell`, `empty`, `pagination`.
 
 ## Testi
 
@@ -56,6 +56,11 @@ I testi dell'interfaccia sono in inglese di default e si traducono con la prop `
     pageSize: 'Righe per pagina',
     summary: ({ start, end, total }) => `${start}–${end} di ${total}`,
     pageOf: (page, count) => `Pagina ${page} di ${count}`,
+    filterColumn: (header) => `Filtra ${header}`,
+    filterAll: 'Tutti',
+    filterMin: 'Min',
+    filterMax: 'Max',
+    clearFilters: 'Azzera filtri',
   }"
   ...
 />

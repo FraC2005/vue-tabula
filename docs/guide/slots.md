@@ -2,14 +2,15 @@
 
 Ogni cella si personalizza con uno slot. Lo slot riceve `{ row, column, value }`.
 
-| Slot                | Quando si usa                                         |
-| ------------------- | ----------------------------------------------------- |
-| `cell-<columnId>`   | Solo le celle della colonna indicata                  |
-| `cell`              | Ripiego per tutte le celle senza slot specifico       |
-| `header-<columnId>` | Intestazione della colonna (riceve `{ column }`)      |
-| `empty`             | Contenuto quando non ci sono righe da mostrare        |
-| `toolbar`           | Sostituisce la ricerca (riceve `search`, `setSearch`) |
-| `pagination`        | Sostituisce i controlli di pagina                     |
+| Slot                | Quando si usa                                              |
+| ------------------- | ---------------------------------------------------------- |
+| `cell-<columnId>`   | Solo le celle della colonna indicata                       |
+| `cell`              | Ripiego per tutte le celle senza slot specifico            |
+| `header-<columnId>` | Intestazione della colonna (riceve `{ column }`)           |
+| `filter-<columnId>` | Controllo di filtro (riceve `{ column, value, setValue }`) |
+| `empty`             | Contenuto quando non ci sono righe da mostrare             |
+| `toolbar`           | Sostituisce la ricerca (riceve `search`, `setSearch`)      |
+| `pagination`        | Sostituisce i controlli di pagina                          |
 
 ```vue
 <VtTable :rows="rows" :columns="columns" row-key="id">

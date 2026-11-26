@@ -7,6 +7,7 @@ In 0.1.0:
 - Le intestazioni ordinabili espongono `aria-sort` (`ascending`, `descending`, `none`) e contengono un vero `<button>`, raggiungibile con Tab e attivabile con Invio e Spazio.
 - Il riepilogo delle pagine è una regione `role="status"`: lo screen reader annuncia i cambi di pagina e di risultati.
 - Il focus è visibile (`:focus-visible`).
+- La riga dei filtri è una riga del grid (`aria-rowindex` 2) e ogni controllo ha un nome accessibile («Filter Nome»); gli indici delle righe dati tengono conto della riga in più.
 - Passa `aria-label` alla tabella per darle un nome.
 
 ::: info Navigazione completa da tastiera

@@ -8,6 +8,11 @@ export const DEFAULT_LABELS: TableLabels = {
   previousPage: 'Previous page',
   nextPage: 'Next page',
   pageSize: 'Rows per page',
+  filterColumn: (header) => `Filter ${header}`,
+  filterAll: 'All',
+  filterMin: 'Min',
+  filterMax: 'Max',
+  clearFilters: 'Clear filters',
   summary: ({ start, end, total }) => (total === 0 ? '0 rows' : `${start}–${end} of ${total}`),
   pageOf: (page, pageCount) => `Page ${page} of ${pageCount}`,
 }

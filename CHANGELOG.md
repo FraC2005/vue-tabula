@@ -5,6 +5,19 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il p
 
 ## [Non rilasciato]
 
+### Aggiunto
+
+- Filtri per colonna (`filter: 'text' | 'select' | 'number'`) con riga di controlli sotto le intestazioni, `filterOptions`, `filterFn` e slot `filter-<columnId>`. I filtri si combinano in AND tra loro e con la ricerca globale; ogni cambio riporta a pagina 1.
+- Pulsante «Clear filters» e metodo esposto `clearFilters`.
+- Funzioni pure `columnFilterIndices`, `isFilterActive`, `selectOptions`, `normalizeOptions` e `setColumnFilter`; `globalSearchIndices` accetta un elenco di indici da considerare.
+- Tipi `FilterValue`, `FilterKind`, `FilterOption`, `FilterPrimitive`, `NumberRange`, `FilterSlotProps`.
+- Etichette `filterColumn`, `filterAll`, `filterMin`, `filterMax`, `clearFilters` e classi `filterRow`, `filterInput`.
+- README del pacchetto: sezione Requisiti (Vue 3.x, TypeScript 6.x con vue-tsc).
+
+### Modificato
+
+- `TableState.filters` è ora `Record<string, FilterValue>` (prima `Record<string, unknown>`).
+
 ## [0.1.0] - 2026-11-26
 
 Primo MVP.

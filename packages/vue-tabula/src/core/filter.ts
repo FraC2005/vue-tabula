@@ -17,19 +17,24 @@ function cellText(value: unknown): string {
  * query compare (senza distinguere maiuscole e accenti) in almeno una delle colonne.
  * Le parole sono separate da spazi e vanno in AND. Con query vuota non filtra.
  * Non modifica `rows`.
+ *
+ * @param indices indici da considerare (es. già filtrati per colonna); se omesso, tutte le righe.
  */
 export function globalSearchIndices<T>(
   rows: readonly T[],
   columns: readonly ColumnDef<T>[],
   query: string,
+  indices?: readonly number[],
 ): number[] {
+  const candidates = indices ?? Array.from({ length: rows.length }, (_, i) => i)
   const terms = normalizeText(query).split(/\s+/).filter(Boolean)
-  if (terms.length === 0) return Array.from({ length: rows.length }, (_, i) => i)
+  if (terms.length === 0) return [...candidates]
 
   const result: number[] = []
-  rows.forEach((row, index) => {
+  for (const index of candidates) {
+    const row = rows[index] as T
     const haystack = columns.map((c) => normalizeText(cellText(getCellValue(row, c)))).join('\n')
     if (terms.every((term) => haystack.includes(term))) result.push(index)
-  })
+  }
   return result
 }
