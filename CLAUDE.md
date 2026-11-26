@@ -78,6 +78,8 @@ Funzioni del componente:
 - Testi dell'interfaccia in inglese di default, sostituibili con la prop `labels`. Le colonne sono ordinabili salvo `sortable: false`.
 
 - Filtri per colonna (0.2.0): `filter: 'text' | 'select' | 'number'`, valori JSON in `TableState.filters` (`string`, primitivo o array, `{min,max}`). Pipeline: filtri di colonna → ricerca globale → ordinamento → pagina. Tipo di confronto da `column.filter`, altrimenti dedotto dalla forma del valore; `filterFn` lo sostituisce. La riga dei filtri è una riga del grid (`aria-rowindex` 2) e sposta gli indici delle righe dati.
+- Debounce (0.2.0): prop `debounce` (default 250 ms) per ricerca globale e filtri di testo/numerici; le bozze stanno fuori dallo stato e si applicano allo scadere, su blur/Invio/Esc o con `getState()`; i filtri a selezione sono immediati. Vale per client e server: in 0.3.0 `request` si emette dal punto in cui si aggiorna lo stato.
+- Navigazione da tastiera (anticipata dalla 0.7.0): modello di posizione logica (riga 0 = intestazione, 1 = filtri se presenti, poi le righe della pagina) in `core/navigation.ts`, roving tabindex con un solo tab stop, controlli predefiniti con `tabindex="-1"`. Alla 0.7.0 restano virtualizzazione (righe fuori dal DOM) e audit con screen reader.
 
 ### Stile
 

@@ -132,6 +132,13 @@
     outline-offset: 2px;
   }
 
+  .vt-header-cell:focus-visible,
+  .vt-filter-cell:focus-visible,
+  .vt-cell:focus-visible {
+    outline: 2px solid var(--vt-ring);
+    outline-offset: -2px;
+  }
+
   .vt-empty {
     flex: 1;
     padding: 2rem 0.75rem;

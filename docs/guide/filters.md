@@ -37,6 +37,23 @@ const columns: ColumnDef<Person>[] = [
 
 Le opzioni di un filtro `select` si ricavano dai valori distinti presenti in `rows` (in ordine naturale); con `filterOptions` le dichiari tu, anche con un'etichetta diversa dal valore.
 
+## Debounce
+
+Mentre si digita, la **ricerca globale** e i filtri di **testo** e **numerici** si applicano dopo una breve pausa (250 ms di default), così la tabella non si ricalcola a ogni tasto. Il testo digitato è mostrato subito; cambia solo il momento in cui le righe si aggiornano. Si configura con la prop `debounce` (in ms; `0` applica subito):
+
+```vue
+<VtTable :debounce="400" ... />
+```
+
+La pausa viene saltata (l'effetto è immediato) quando:
+
+- il campo perde il focus, o premi Invio o Esc;
+- cambia un filtro a **selezione** (non si digita nulla: si applica sempre subito);
+- chiami `getState()`, che include sempre quanto appena digitato;
+- usi `setValue` di uno slot `filter-<columnId>` (il controllo personalizzato decide da sé quando).
+
+`clearFilters()` e `resetState()` scartano ciò che è in attesa. Il debounce agisce sul passaggio che aggiorna lo stato, quindi vale allo stesso modo in modalità client e server.
+
 ## Confronto personalizzato
 
 `filterFn` sostituisce il confronto di default della colonna. Riceve il valore della cella, il valore del filtro e la riga:
@@ -65,7 +82,7 @@ Lo slot `filter-<columnId>` sostituisce il controllo e riceve `{ column, value, 
 
 ## Funzioni pure
 
-`columnFilterIndices(rows, columns, filters, indices?)` applica i filtri senza il componente e restituisce indici; `isFilterActive`, `selectOptions`, `normalizeOptions` e `setColumnFilter(state, columnId, value)` completano il set. Esempio, combinato con la ricerca globale:
+`columnFilterIndices(rows, columns, filters, indices?)` applica i filtri senza il componente e restituisce indici; `isFilterActive`, `selectOptions`, `normalizeOptions` e `setColumnFilter(state, columnId, value)` completano il set. `createDebouncer()` espone il gestore del debounce usato dal componente. Esempio, combinato con la ricerca globale:
 
 ```ts
 import { columnFilterIndices, globalSearchIndices } from 'vue-tabula'

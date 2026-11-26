@@ -12,10 +12,14 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il p
 - Funzioni pure `columnFilterIndices`, `isFilterActive`, `selectOptions`, `normalizeOptions` e `setColumnFilter`; `globalSearchIndices` accetta un elenco di indici da considerare.
 - Tipi `FilterValue`, `FilterKind`, `FilterOption`, `FilterPrimitive`, `NumberRange`, `FilterSlotProps`.
 - Etichette `filterColumn`, `filterAll`, `filterMin`, `filterMax`, `clearFilters` e classi `filterRow`, `filterInput`.
+- Navigazione da tastiera secondo il pattern ARIA grid: un solo tab stop (roving tabindex), frecce, Home/Fine (con Ctrl: angoli), PageUp/PageDown, Invio o F2 per entrare nel controllo di una cella, Esc per uscirne (applicando subito il testo digitato), Invio/Spazio sulle intestazioni per ordinare. Metodo esposto `focusCell` e funzioni pure `moveGridPosition` e `clampPosition`.
+- Prop `debounce` (default 250 ms) per ricerca globale e filtri di testo e numerici, con applicazione immediata su blur, Invio, Esc e `getState()`; i filtri a selezione restano immediati. Funzione `createDebouncer`.
 - README del pacchetto: sezione Requisiti (Vue 3.x, TypeScript 6.x con vue-tsc).
 
 ### Modificato
 
+- La ricerca globale è ora ritardata di `debounce` ms (prima era immediata); `:debounce="0"` ripristina il comportamento precedente.
+- Le intestazioni e i controlli predefiniti non sono più tab stop singoli: si raggiungono con la navigazione della griglia (frecce, Invio/F2).
 - `TableState.filters` è ora `Record<string, FilterValue>` (prima `Record<string, unknown>`).
 
 ## [0.1.0] - 2026-11-26

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import type { Component } from 'vue'
 import { VtTable } from '../../src'
 import type { ColumnDef, RowKey } from '../../src'
@@ -18,6 +18,7 @@ interface TableProps {
   rowKey: keyof Persona | ((row: Persona) => RowKey)
   ariaLabel?: string
   pageSize?: number
+  debounce?: number
   searchable?: boolean
   paginated?: boolean
   labels?: Record<string, unknown>
@@ -26,7 +27,7 @@ interface TableProps {
 
 // mount() di test-utils non conserva i generici dei componenti: li fissiamo qui.
 function mountTable(props: TableProps, slots: Record<string, string> = {}) {
-  return mount(VtTable as unknown as Component, { props: { ...props }, slots })
+  return mount(VtTable as unknown as Component, { props: { debounce: 0, ...props }, slots })
 }
 
 const rows: Persona[] = [
@@ -251,7 +252,7 @@ describe('VtTable', () => {
     ]
     const mountFilters = () =>
       mount(VtTable as unknown as Component, {
-        props: { rows: people, columns: cols, rowKey: 'id' },
+        props: { rows: people, columns: cols, rowKey: 'id', debounce: 0 },
       })
     const bodyNames = (w: ReturnType<typeof mountFilters>) =>
       w.findAll('.vt-body [role="gridcell"][aria-colindex="1"]').map((c) => c.text())
@@ -319,7 +320,7 @@ describe('VtTable', () => {
 
     it('espone filter-<columnId> per sostituire il controllo', async () => {
       const wrapper = mount(VtTable as unknown as Component, {
-        props: { rows: people, columns: cols, rowKey: 'id' },
+        props: { rows: people, columns: cols, rowKey: 'id', debounce: 0 },
         slots: {
           'filter-nome': `<template #filter-nome="{ setValue }"><button class="mio" @click="setValue('linus')">x</button></template>`,
         },
@@ -333,6 +334,351 @@ describe('VtTable', () => {
       await wrapper.get('input[aria-label="Filter Nome"]').setValue('ada')
       const vm = wrapper.vm as unknown as { getState(): { filters: unknown } }
       expect(vm.getState().filters).toEqual({ nome: 'ada' })
+    })
+  })
+
+  describe('debounce', () => {
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    interface P3 {
+      id: number
+      nome: string
+      eta: number
+      citta: string
+    }
+    const people: P3[] = [
+      { id: 1, nome: 'Ada', eta: 36, citta: 'Londra' },
+      { id: 2, nome: 'Linus', eta: 54, citta: 'Helsinki' },
+      { id: 3, nome: 'Grace', eta: 85, citta: 'Londra' },
+    ]
+    const cols: ColumnDef<P3>[] = [
+      { id: 'nome', header: 'Nome', filter: 'text' },
+      { id: 'eta', header: 'Età', filter: 'number' },
+      { id: 'citta', header: 'Città', filter: 'select' },
+    ]
+    const mountDebounced = (extra: Record<string, unknown> = {}) =>
+      mount(VtTable as unknown as Component, {
+        props: { rows: people, columns: cols, rowKey: 'id', ...extra },
+      })
+    const names = (w: ReturnType<typeof mountDebounced>) =>
+      w.findAll('.vt-body [role="gridcell"][aria-colindex="1"]').map((c) => c.text())
+
+    it('ritarda ricerca globale e filtri di testo di 250 ms di default', async () => {
+      const wrapper = mountDebounced()
+      await wrapper.get('input[type="search"]').setValue('grace')
+      await wrapper.get('input[aria-label="Filter Nome"]').setValue('li')
+      expect(names(wrapper)).toHaveLength(3)
+      vi.advanceTimersByTime(249)
+      await flushPromises()
+      expect(names(wrapper)).toHaveLength(3)
+      vi.advanceTimersByTime(1)
+      await flushPromises()
+      expect(names(wrapper)).toEqual([])
+    })
+
+    it('mostra subito ciò che si digita, anche prima dell’applicazione', async () => {
+      const wrapper = mountDebounced()
+      const input = wrapper.get('input[aria-label="Filter Nome"]')
+      await input.setValue('gra')
+      expect((input.element as HTMLInputElement).value).toBe('gra')
+      expect(names(wrapper)).toHaveLength(3)
+    })
+
+    it('ricomincia il conto a ogni carattere', async () => {
+      const wrapper = mountDebounced()
+      const input = wrapper.get('input[aria-label="Filter Nome"]')
+      await input.setValue('g')
+      vi.advanceTimersByTime(200)
+      await input.setValue('gr')
+      vi.advanceTimersByTime(200)
+      await flushPromises()
+      expect(names(wrapper)).toHaveLength(3)
+      vi.advanceTimersByTime(50)
+      await flushPromises()
+      expect(names(wrapper)).toEqual(['Grace'])
+    })
+
+    it('ritarda anche i filtri numerici', async () => {
+      const wrapper = mountDebounced()
+      await wrapper.get('input[aria-label="Filter Età: Min"]').setValue('50')
+      expect(names(wrapper)).toHaveLength(3)
+      vi.advanceTimersByTime(250)
+      await flushPromises()
+      expect(names(wrapper)).toEqual(['Linus', 'Grace'])
+    })
+
+    it('il filtro a selezione si applica subito', async () => {
+      const wrapper = mountDebounced()
+      await wrapper.get('select[aria-label="Filter Città"]').setValue('1')
+      expect(names(wrapper)).toEqual(['Ada', 'Grace'])
+    })
+
+    it('il ritardo è configurabile; 0 applica subito', async () => {
+      const slow = mountDebounced({ debounce: 600 })
+      await slow.get('input[aria-label="Filter Nome"]').setValue('gra')
+      vi.advanceTimersByTime(599)
+      await flushPromises()
+      expect(names(slow)).toHaveLength(3)
+      vi.advanceTimersByTime(1)
+      await flushPromises()
+      expect(names(slow)).toEqual(['Grace'])
+
+      const instant = mountDebounced({ debounce: 0 })
+      await instant.get('input[aria-label="Filter Nome"]').setValue('gra')
+      expect(names(instant)).toEqual(['Grace'])
+    })
+
+    it('blur e Invio applicano subito la bozza', async () => {
+      const wrapper = mountDebounced()
+      const input = wrapper.get('input[aria-label="Filter Nome"]')
+      await input.setValue('gra')
+      await input.trigger('blur')
+      expect(names(wrapper)).toEqual(['Grace'])
+
+      await input.setValue('lin')
+      await input.trigger('keydown', { key: 'Enter' })
+      expect(names(wrapper)).toEqual(['Linus'])
+    })
+
+    it('getState include le bozze in attesa', async () => {
+      const wrapper = mountDebounced()
+      await wrapper.get('input[aria-label="Filter Nome"]').setValue('ada')
+      const vm = wrapper.vm as unknown as { getState(): { filters: unknown } }
+      expect(vm.getState().filters).toEqual({ nome: 'ada' })
+    })
+
+    it('"Clear filters" e resetState scartano le bozze in attesa', async () => {
+      const wrapper = mountDebounced()
+      await wrapper.get('input[aria-label="Filter Nome"]').setValue('ada')
+      ;(wrapper.vm as unknown as { resetState(): void }).resetState()
+      vi.advanceTimersByTime(500)
+      await flushPromises()
+      expect(names(wrapper)).toHaveLength(3)
+      expect(
+        (wrapper.get('input[aria-label="Filter Nome"]').element as HTMLInputElement).value,
+      ).toBe('')
+    })
+
+    it('non applica nulla dopo lo smontaggio', async () => {
+      const wrapper = mountDebounced()
+      await wrapper.get('input[type="search"]').setValue('x')
+      wrapper.unmount()
+      expect(() => vi.advanceTimersByTime(500)).not.toThrow()
+    })
+  })
+
+  describe('navigazione da tastiera', () => {
+    interface P4 {
+      id: number
+      nome: string
+      citta: string
+    }
+    const people: P4[] = Array.from({ length: 15 }, (_, i) => ({
+      id: i + 1,
+      nome: `P${i + 1}`,
+      citta: i % 2 ? 'Roma' : 'Milano',
+    }))
+    const cols: ColumnDef<P4>[] = [
+      { id: 'id', header: 'ID', filter: 'text' },
+      { id: 'nome', header: 'Nome', filter: 'text' },
+      { id: 'citta', header: 'Città', filter: 'select' },
+    ]
+    let wrapper: ReturnType<typeof mountGrid>
+    function mountGrid(slots: Record<string, string> = {}, props: Record<string, unknown> = {}) {
+      return mount(VtTable as unknown as Component, {
+        attachTo: document.body,
+        props: { rows: people, columns: cols, rowKey: 'id', debounce: 0, pageSize: 25, ...props },
+        slots,
+      })
+    }
+    afterEach(() => wrapper?.unmount())
+
+    const cell = (row: number, col: number) =>
+      wrapper.get(`[data-vt-row="${row}"][data-vt-col="${col}"]`)
+    const focused = () => {
+      const el = document.activeElement as HTMLElement | null
+      return el?.dataset?.vtRow === undefined ? el : `${el.dataset.vtRow},${el.dataset.vtCol}`
+    }
+    async function press(row: number, col: number, key: string, init: object = {}) {
+      await cell(row, col).trigger('keydown', { key, ...init })
+      await flushPromises()
+    }
+
+    it('ha un solo tab stop: la cella attiva; i controlli interni non sono tabbabili', () => {
+      wrapper = mountGrid()
+      const stops = wrapper.findAll('[tabindex="0"]')
+      expect(stops).toHaveLength(1)
+      expect(stops[0]!.attributes('data-vt-row')).toBe('0')
+      for (const control of wrapper.findAll('.vt-filter-cell input, .vt-filter-cell select')) {
+        expect(control.attributes('tabindex')).toBe('-1')
+      }
+      expect(wrapper.get('.vt-sort-button').attributes('tabindex')).toBe('-1')
+    })
+
+    it('le frecce destra e sinistra si muovono tra le celle della riga dei filtri', async () => {
+      wrapper = mountGrid()
+      await press(1, 0, 'ArrowRight')
+      expect(focused()).toBe('1,1')
+      await press(1, 1, 'ArrowRight')
+      expect(focused()).toBe('1,2')
+      await press(1, 2, 'ArrowRight')
+      expect(focused()).toBe('1,2')
+      await press(1, 2, 'ArrowLeft')
+      expect(focused()).toBe('1,1')
+    })
+
+    it('sposta il tab stop sulla cella raggiunta (roving tabindex)', async () => {
+      wrapper = mountGrid()
+      await press(1, 0, 'ArrowRight')
+      expect(cell(1, 1).attributes('tabindex')).toBe('0')
+      expect(cell(0, 0).attributes('tabindex')).toBe('-1')
+      expect(wrapper.findAll('[tabindex="0"]')).toHaveLength(1)
+    })
+
+    it('le frecce su e giù attraversano intestazione, filtri e righe', async () => {
+      wrapper = mountGrid()
+      await press(0, 1, 'ArrowDown')
+      expect(focused()).toBe('1,1')
+      await press(1, 1, 'ArrowDown')
+      expect(focused()).toBe('2,1')
+      await press(2, 1, 'ArrowUp')
+      await press(1, 1, 'ArrowUp')
+      expect(focused()).toBe('0,1')
+    })
+
+    it('Home, End, Ctrl+Home, Ctrl+End e PageDown/PageUp', async () => {
+      wrapper = mountGrid()
+      await press(3, 1, 'End')
+      expect(focused()).toBe('3,2')
+      await press(3, 2, 'Home')
+      expect(focused()).toBe('3,0')
+      await press(3, 0, 'End', { ctrlKey: true })
+      expect(focused()).toBe('16,2')
+      await press(16, 2, 'Home', { ctrlKey: true })
+      expect(focused()).toBe('0,0')
+      await press(0, 0, 'PageDown')
+      expect(focused()).toBe('10,0')
+      await press(10, 0, 'PageUp')
+      expect(focused()).toBe('0,0')
+    })
+
+    it('Invio entra nel controllo del filtro e le frecce funzionano nel controllo', async () => {
+      wrapper = mountGrid()
+      await press(1, 1, 'Enter')
+      const input = wrapper.get('input[aria-label="Filter Nome"]').element
+      expect(document.activeElement).toBe(input)
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        bubbles: true,
+        cancelable: true,
+      })
+      input.dispatchEvent(event)
+      await flushPromises()
+      expect(event.defaultPrevented).toBe(false)
+      expect(document.activeElement).toBe(input)
+    })
+
+    it('F2 entra nel controllo; nel filtro a selezione porta sul select', async () => {
+      wrapper = mountGrid()
+      await press(1, 2, 'F2')
+      expect(document.activeElement).toBe(wrapper.get('select[aria-label="Filter Città"]').element)
+    })
+
+    it('Esc torna alla cella e la navigazione riprende', async () => {
+      wrapper = mountGrid()
+      await press(1, 1, 'Enter')
+      const input = wrapper.get('input[aria-label="Filter Nome"]')
+      await input.trigger('keydown', { key: 'Escape' })
+      await flushPromises()
+      expect(focused()).toBe('1,1')
+      await press(1, 1, 'ArrowRight')
+      expect(focused()).toBe('1,2')
+    })
+
+    it('Esc applica subito il testo digitato (con debounce attivo)', async () => {
+      vi.useFakeTimers()
+      try {
+        wrapper = mountGrid({}, { debounce: 250 })
+        await press(1, 1, 'Enter')
+        const input = wrapper.get('input[aria-label="Filter Nome"]')
+        await input.setValue('P1')
+        await input.trigger('keydown', { key: 'Escape' })
+        await flushPromises()
+        expect(wrapper.findAll('.vt-body [role="row"]')).toHaveLength(7)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('Invio o Spazio su una cella d’intestazione ordinano', async () => {
+      wrapper = mountGrid()
+      await press(0, 1, 'Enter')
+      expect(cell(0, 1).attributes('aria-sort')).toBe('ascending')
+      expect(focused()).toBe('0,1')
+      await press(0, 1, ' ')
+      expect(cell(0, 1).attributes('aria-sort')).toBe('descending')
+    })
+
+    it('il clic sul pulsante di ordinamento riporta il focus sulla cella', async () => {
+      wrapper = mountGrid()
+      await cell(0, 2).get('button').trigger('click')
+      await flushPromises()
+      expect(focused()).toBe('0,2')
+    })
+
+    it('Invio su una cella dati entra nel primo controllo dello slot', async () => {
+      wrapper = mountGrid({
+        'cell-nome':
+          '<template #cell-nome="{ value }"><a href="#x" class="link">{{ value }}</a></template>',
+      })
+      await press(2, 1, 'Enter')
+      expect(document.activeElement).toBe(cell(2, 1).get('a.link').element)
+    })
+
+    it('Invio su una cella senza controlli non fa nulla', async () => {
+      wrapper = mountGrid()
+      await press(2, 0, 'Enter')
+      expect(document.activeElement).toBe(document.body)
+    })
+
+    it('il focus con il mouse aggiorna la cella attiva', async () => {
+      wrapper = mountGrid()
+      ;(cell(3, 1).element as HTMLElement).focus()
+      await flushPromises()
+      expect(cell(3, 1).attributes('tabindex')).toBe('0')
+      expect(wrapper.findAll('[tabindex="0"]')).toHaveLength(1)
+    })
+
+    it('senza riga dei filtri la riga 1 è la prima riga dati', async () => {
+      wrapper = mountGrid(
+        {},
+        {
+          columns: [
+            { id: 'id', header: 'ID' },
+            { id: 'nome', header: 'Nome' },
+          ],
+        },
+      )
+      await press(0, 0, 'ArrowDown')
+      expect(focused()).toBe('1,0')
+      expect(cell(1, 0).text()).toBe('1')
+    })
+
+    it('il metodo focusCell sposta il focus', async () => {
+      wrapper = mountGrid()
+      ;(wrapper.vm as unknown as { focusCell(row: number, col?: number): void }).focusCell(4, 2)
+      await flushPromises()
+      expect(focused()).toBe('4,2')
+    })
+
+    it('se la cella attiva sparisce (meno righe) il tab stop resta valido', async () => {
+      wrapper = mountGrid()
+      await press(12, 0, 'End')
+      await wrapper.get('input[type="search"]').setValue('P1 ')
+      await flushPromises()
+      expect(wrapper.findAll('[tabindex="0"]')).toHaveLength(1)
     })
   })
 })

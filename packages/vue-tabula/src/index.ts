@@ -10,6 +10,10 @@ export {
   selectOptions,
 } from './core/columnFilters.js'
 export type { NormalizedOption } from './core/columnFilters.js'
+export { createDebouncer } from './core/debounce.js'
+export type { Debouncer } from './core/debounce.js'
+export { clampPosition, moveGridPosition } from './core/navigation.js'
+export type { GridBounds, GridPosition } from './core/navigation.js'
 export { paginate } from './core/paginate.js'
 export type { PageInfo } from './core/paginate.js'
 export type {

@@ -31,15 +31,16 @@
 
 Con un `ref` al componente:
 
-- `getState(): TableState` — copia dello stato corrente (serializzabile in JSON).
+- `getState(): TableState` — copia dello stato corrente (serializzabile in JSON); applica prima quanto appena digitato.
+- `focusCell(row, col?): void` — sposta il focus su una cella (riga 0 = intestazione, 1 = filtri se presenti, poi le righe).
 - `clearFilters(): void` — rimuove i filtri di colonna e la ricerca globale.
 - `resetState(): void` — riporta ordinamento, filtri, ricerca e pagina ai valori iniziali.
 
 ## Funzioni e tipi esportati
 
-`createDefaultState`, `DEFAULT_PAGE_SIZE`, `setColumnFilter`, `getCellValue`, `compareValues`, `sortIndices`, `toggleSort`, `globalSearchIndices`, `normalizeText`, `columnFilterIndices`, `isFilterActive`, `selectOptions`, `normalizeOptions`, `paginate`.
+`createDefaultState`, `DEFAULT_PAGE_SIZE`, `setColumnFilter`, `getCellValue`, `compareValues`, `sortIndices`, `toggleSort`, `globalSearchIndices`, `normalizeText`, `columnFilterIndices`, `isFilterActive`, `selectOptions`, `normalizeOptions`, `createDebouncer`, `moveGridPosition`, `clampPosition`, `paginate`.
 
-Tipi: `ColumnDef`, `TableState`, `SortEntry`, `SortDirection`, `RowKey`, `CellSlotProps`, `HeaderSlotProps`, `FilterSlotProps`, `FilterKind`, `FilterOption`, `FilterPrimitive`, `FilterValue`, `NumberRange`, `TableClasses`, `TableLabels`, `PageInfo`.
+Tipi: `ColumnDef`, `TableState`, `SortEntry`, `SortDirection`, `RowKey`, `CellSlotProps`, `HeaderSlotProps`, `FilterSlotProps`, `FilterKind`, `FilterOption`, `FilterPrimitive`, `FilterValue`, `NumberRange`, `GridPosition`, `GridBounds`, `Debouncer`, `TableClasses`, `TableLabels`, `PageInfo`.
 
 ::: warning API non ancora stabile
 Siamo in 0.x: tra una versione minore e l'altra l'API può cambiare. Le modifiche sono nel [CHANGELOG](https://github.com/FraC2005/vue-tabula/blob/main/CHANGELOG.md).

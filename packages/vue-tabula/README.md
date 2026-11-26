@@ -10,12 +10,13 @@ Tabella dati avanzata per Vue 3, scritta da zero: **zero dipendenze a runtime**,
 
 - Ordinamento su più colonne (Maiusc + clic)
 - Ricerca globale (senza distinguere maiuscole e accenti)
-- Filtri per colonna: testo, selezione e intervallo numerico, combinabili in AND
+- Filtri per colonna: testo, selezione e intervallo numerico, combinabili in AND; ricerca e filtri digitati con debounce configurabile
+- Navigazione da tastiera secondo il pattern ARIA grid (un solo tab stop, frecce, Invio/F2, Esc)
 - Paginazione lato client
 - Celle e intestazioni personalizzabili con slot, tipizzate sul tipo di riga
 - Stile con le variabili CSS di shadcn, senza Tailwind a runtime; classi sovrascrivibili tramite prop
 
-In arrivo: selezione, `v-model:state`, paginazione lato server, colonne ridimensionabili/riordinabili/fisse, righe espandibili, virtualizzazione (50.000 righe) e navigazione completa da tastiera.
+In arrivo: selezione, `v-model:state`, paginazione lato server, colonne ridimensionabili/riordinabili/fisse, righe espandibili, virtualizzazione (50.000 righe) e navigazione da tastiera con la virtualizzazione.
 
 ## Installazione
 
