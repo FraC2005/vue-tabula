@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   deselectKeys,
+  pruneSelection,
   selectKeys,
   selectRange,
   selectionState,
@@ -60,5 +61,29 @@ describe('selectionState', () => {
   it('conta solo le chiavi considerate e con insieme vuoto dà none', () => {
     expect(selectionState([9], [1, 2])).toBe('none')
     expect(selectionState([1], [])).toBe('none')
+  })
+})
+
+describe('pruneSelection', () => {
+  const rows = [
+    { id: 1, k: 'a' },
+    { id: 2, k: 'b' },
+    { id: 3, k: 'c' },
+  ]
+  it('toglie le chiavi senza riga, mantenendo l’ordine', () => {
+    expect(pruneSelection([3, 99, 1, 100], rows, 'id')).toEqual([3, 1])
+  })
+  it('accetta rowKey come funzione e chiavi testuali', () => {
+    expect(pruneSelection(['b', 'zzz'], rows, (r) => r.k)).toEqual(['b'])
+  })
+  it('distingue chiavi numeriche e testuali', () => {
+    expect(pruneSelection(['1', 1], rows, 'id')).toEqual([1])
+  })
+  it('non modifica l’array in ingresso e gestisce gli insiemi vuoti', () => {
+    const selected = [1, 99]
+    pruneSelection(selected, rows, 'id')
+    expect(selected).toEqual([1, 99])
+    expect(pruneSelection([], rows, 'id')).toEqual([])
+    expect(pruneSelection([1], [], 'id')).toEqual([])
   })
 })

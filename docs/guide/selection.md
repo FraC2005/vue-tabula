@@ -35,7 +35,22 @@ const selected = ref<RowKey[]>([])
 </template>
 ```
 
-Le chiavi di righe non più presenti in `rows` (per esempio filtrate via dal server) restano nell'elenco: è la selezione a decidere, non i dati mostrati. Per svuotarla assegna `[]` o chiama `clearSelection()` su un `ref` al componente.
+Per svuotarla assegna `[]` o chiama `clearSelection()` su un `ref` al componente.
+
+### Chiavi orfane
+
+Le chiavi di righe che non sono più in `rows` (rimosse dai dati, o presenti solo in un'altra pagina) **restano nella selezione**: è la selezione a decidere, non i dati mostrati. Di conseguenza il **conteggio** (`selected.length` e l'annuncio «3 selected») include anche le chiavi orfane. Con la paginazione lato server (0.3.0), dove `rows` contiene solo la pagina corrente, sarà la norma: le righe scelte nelle altre pagine restano selezionate e contate.
+
+Se invece `rows` contiene tutti i dati selezionabili e vuoi togliere le chiavi che non esistono più, usa `pruneSelection(selected, rows, rowKey)`:
+
+```ts
+import { pruneSelection } from 'vue-tabula'
+
+// dopo aver ricaricato i dati
+selected.value = pruneSelection(selected.value, rows.value, 'id')
+```
+
+Restituisce un nuovo array (stesso ordine, senza le chiavi senza riga). Il componente non lo applica da solo proprio perché, lato server, toglierebbe le selezioni delle altre pagine.
 
 ## Interazioni
 
@@ -52,6 +67,7 @@ Le chiavi di righe non più presenti in `rows` (per esempio filtrate via dal ser
 - «Tutte» e Ctrl/Cmd+A valgono per le righe che passano i filtri e la ricerca: le altre righe selezionate restano. In modalità server (0.3.0) varranno per la pagina corrente.
 - La checkbox dell'intestazione è **indeterminata** quando è selezionata solo una parte delle righe filtrate.
 - Ctrl/Cmd+A dentro un campo di testo (filtro, ricerca) seleziona il testo, non le righe.
+- I clic su elementi interattivi dentro le celle (`a`, `button`, `input`, `select`, `textarea`, `[contenteditable]`, `[role="button"]`) non selezionano nulla, nemmeno con Maiusc: un link o un pulsante nello slot di una cella si comporta normalmente. Fa eccezione la checkbox di selezione.
 
 ## Accessibilità
 
@@ -62,7 +78,7 @@ Le chiavi di righe non più presenti in `rows` (per esempio filtrate via dal ser
 
 ## Funzioni pure
 
-`toggleKey`, `selectRange`, `selectKeys`, `deselectKeys` e `selectionState` lavorano su array di chiavi e non li modificano:
+`toggleKey`, `selectRange`, `selectKeys`, `deselectKeys`, `pruneSelection` e `selectionState` lavorano su array di chiavi e non li modificano:
 
 ```ts
 import { selectRange, selectionState } from 'vue-tabula'

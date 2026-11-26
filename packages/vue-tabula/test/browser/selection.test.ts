@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { mount } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
+import { h } from 'vue'
 import type { Component } from 'vue'
 import { VtTable } from '../../src'
 import '../../src/styles/vue-tabula.css'
@@ -99,5 +100,57 @@ describe('selezione nel browser', () => {
     await userEvent.click(checkbox(0))
     expect(header.indeterminate).toBe(true)
     expect(wrapper!.get('[role="status"]').text()).toContain('11 selected')
+  })
+
+  it('i clic su link, pulsanti e campi dentro le celle non selezionano, nemmeno con Maiusc', async () => {
+    wrapper = mount(VtTable as unknown as Component, {
+      attachTo: document.body,
+      props: {
+        rows,
+        columns: [
+          { id: 'nome', header: 'Nome' },
+          { id: 'azione', header: 'Azione', accessor: () => '' },
+        ],
+        rowKey: 'id',
+        selection: 'multiple',
+        searchable: false,
+        pageSize: 25,
+      },
+      slots: {
+        // preventDefault: un Maiusc+clic su un link aprirebbe una nuova finestra.
+        'cell-nome': (p: { value: unknown }) =>
+          h(
+            'a',
+            { href: '#x', class: 'lnk', onClick: (e: Event) => e.preventDefault() },
+            String(p.value),
+          ),
+        'cell-azione': () => [
+          h('button', { type: 'button', class: 'btn' }, 'x'),
+          h('input', { type: 'text', class: 'campo' }),
+          h('span', { role: 'button', tabindex: 0, class: 'ruolo' }, 'y'),
+        ],
+      },
+    })
+    const rowsEl = () => wrapper!.findAll('.vt-body [role="row"]')
+    const selectedCount = () => wrapper!.findAll('.vt-body [aria-selected="true"]').length
+    const el = (row: number, sel: string) => rowsEl()[row]!.get(sel).element as HTMLElement
+
+    // Un'ancora per l'intervallo: la riga 1 selezionata con la checkbox.
+    await userEvent.click(rowsEl()[0]!.get('input.vt-select-input').element as HTMLElement)
+    expect(selectedCount()).toBe(1)
+
+    await userEvent.keyboard('{Shift>}')
+    for (const sel of ['.lnk', '.btn', '.campo', '.ruolo']) {
+      await userEvent.click(el(4, sel))
+      expect(selectedCount(), `Maiusc+clic su ${sel}`).toBe(1)
+    }
+    // Maiusc+clic su una parte non interattiva della stessa riga: l'intervallo funziona ancora.
+    await userEvent.click(rowsEl()[4]!.findAll('[role="gridcell"]')[1]!.element as HTMLElement)
+    await userEvent.keyboard('{/Shift}')
+    expect(selectedCount()).toBe(5)
+
+    // La checkbox di selezione resta l'eccezione: funziona anche con Maiusc.
+    await userEvent.click(rowsEl()[7]!.get('input.vt-select-input').element as HTMLElement)
+    expect(selectedCount()).toBe(6)
   })
 })

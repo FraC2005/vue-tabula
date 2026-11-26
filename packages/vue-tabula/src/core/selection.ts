@@ -1,4 +1,5 @@
 import type { RowKey, SelectionMode } from '../types.js'
+import { getRowKey } from './accessor.js'
 
 /** Quante delle chiavi considerate risultano selezionate. */
 export type SelectionState = 'none' | 'some' | 'all'
@@ -55,4 +56,21 @@ export function selectionState(
   let count = 0
   for (const key of keys) if (set.has(key)) count++
   return count === 0 ? 'none' : count === keys.length ? 'all' : 'some'
+}
+
+/**
+ * Toglie dalla selezione le chiavi che non corrispondono a nessuna riga di `rows`
+ * (chiavi "orfane": righe rimosse, o non nella pagina/dati attuali). Mantiene l'ordine
+ * e non modifica l'array in ingresso.
+ *
+ * Il componente non lo fa da solo, perché in modalità server le righe selezionate in altre
+ * pagine non sono in `rows`: usalo quando `rows` contiene *tutti* i dati selezionabili.
+ */
+export function pruneSelection<T>(
+  selected: readonly RowKey[],
+  rows: readonly T[],
+  rowKey: keyof T | ((row: T) => RowKey),
+): RowKey[] {
+  const present = new Set(rows.map((row) => getRowKey(row, rowKey)))
+  return selected.filter((key) => present.has(key))
 }

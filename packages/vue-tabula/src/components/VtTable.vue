@@ -12,7 +12,7 @@ import type {
   TableLabels,
   TableState,
 } from '../types.js'
-import { getCellValue } from '../core/accessor.js'
+import { getCellValue, getRowKey } from '../core/accessor.js'
 import { columnFilterIndices, isFilterActive, selectOptions } from '../core/columnFilters.js'
 import { createDebouncer } from '../core/debounce.js'
 import { globalSearchIndices } from '../core/filter.js'
@@ -126,8 +126,7 @@ const visibleRows = computed(() =>
 const total = computed(() => sorted.value.length)
 
 function keyOf(row: T): RowKey {
-  const key = props.rowKey
-  return typeof key === 'function' ? key(row) : (row[key] as RowKey)
+  return getRowKey(row, props.rowKey)
 }
 
 // --- Debounce: ciò che l'utente digita (bozza) si applica allo stato dopo `debounce` ms ---
@@ -366,12 +365,24 @@ function onHeaderCheckboxClick(event: MouseEvent) {
   input.indeterminate = false
 }
 
-/** Clic su una riga: sulla checkbox seleziona; Maiusc+clic su una cella seleziona l'intervallo. */
+/** Elementi su cui un clic ha un significato proprio: non devono attivare la selezione. */
+const INTERACTIVE_SELECTOR =
+  'a, button, input, select, textarea, [contenteditable]:not([contenteditable="false"]), [role="button"]'
+
+/**
+ * Clic su una riga: la checkbox di selezione seleziona (con Maiusc, l'intervallo); Maiusc+clic
+ * su una cella seleziona l'intervallo. I clic su elementi interattivi dentro le celle (link,
+ * pulsanti, campi...) non selezionano nulla.
+ */
 function onRowClick(row: T, event: MouseEvent) {
   if (!selectionEnabled.value) return
   const target = event.target as HTMLElement
   const onCheckbox = target.classList.contains('vt-select-input')
-  if (!onCheckbox && !(event.shiftKey && props.selection === 'multiple')) return
+  if (!onCheckbox) {
+    if (!(event.shiftKey && props.selection === 'multiple')) return
+    const interactive = target.closest(INTERACTIVE_SELECTOR)
+    if (interactive && (event.currentTarget as HTMLElement).contains(interactive)) return
+  }
   const next = selectRow(row, event.shiftKey)
   if (onCheckbox) (target as HTMLInputElement).checked = next.includes(keyOf(row))
   else window.getSelection()?.removeAllRanges()

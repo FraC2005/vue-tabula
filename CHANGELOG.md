@@ -17,7 +17,8 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il p
 - Selezione delle righe per `rowKey` (prop `selection`: `single` o `multiple`), con colonna di checkbox opzionale (`selectionColumn`) e `v-model:selected` facoltativo con le chiavi selezionate. La selezione resta tra pagine, ordinamenti e filtri.
 - Interazioni: checkbox nell'intestazione con stato indeterminato (seleziona tutte le righe filtrate), Maiusc+clic per un intervallo (anche tra pagine), Spazio sulla cella della checkbox, Maiusc+Spazio su qualunque cella, Ctrl/Cmd+A in modalità `multiple`.
 - Accessibilità: `aria-selected` sulle righe, `aria-multiselectable` sulla griglia, annuncio del numero di righe selezionate nel `role="status"` (con regione propria se manca il riepilogo di paginazione). Con la colonna di selezione, `aria-colcount` e `aria-colindex` la includono.
-- Metodo esposto `clearSelection` e funzioni pure `toggleKey`, `selectRange`, `selectKeys`, `deselectKeys`, `selectionState`; tipi `SelectionMode` e `SelectionState`; etichette `selectAll`, `selectRow`, `selectedCount`.
+- I clic su elementi interattivi dentro le celle (link, pulsanti, campi, `[role="button"]`...) non attivano la selezione né l'intervallo con Maiusc; fa eccezione la checkbox di selezione. Il conteggio delle righe selezionate include le chiavi orfane (non più in `rows`).
+- Metodo esposto `clearSelection` e funzioni pure `toggleKey`, `selectRange`, `selectKeys`, `deselectKeys`, `pruneSelection` (toglie le chiavi senza riga), `selectionState`, più `getRowKey`; tipi `SelectionMode` e `SelectionState`; etichette `selectAll`, `selectRow`, `selectedCount`.
 - README del pacchetto: sezione Requisiti (Vue 3.x, TypeScript 6.x con vue-tsc).
 
 ### Modificato

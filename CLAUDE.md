@@ -82,6 +82,9 @@ Funzioni del componente:
 - Navigazione da tastiera (anticipata dalla 0.7.0): modello di posizione logica (riga 0 = intestazione, 1 = filtri se presenti, poi le righe della pagina) in `core/navigation.ts`, roving tabindex con un solo tab stop, controlli predefiniti con `tabindex="-1"`. Alla 0.7.0 restano virtualizzazione (righe fuori dal DOM) e audit con screen reader, più la **gestione automatica del tabindex degli elementi focalizzabili dentro gli slot delle celle**: `tabindex="-1"` finché non si entra nella cella con Invio/F2, poi ripristino all'uscita (Esc).
 - Selezione (0.2.0): prop `selection` (`none`/`single`/`multiple`), `selectionColumn`, `v-model:selected` (`RowKey[]`, via `defineModel`, facoltativo); la selezione NON sta in `TableState`. Per chiave tra pagine/ordinamenti/filtri; "tutte" e Ctrl/Cmd+A valgono per le righe filtrate (in server mode, per la pagina corrente); Maiusc+clic aggiunge l'intervallo nell'ordine mostrato (l'ultima riga toccata diventa l'ancora). La colonna di selezione è la colonna logica 0 (`aria-colindex` 1) e sposta di uno le colonne di dati.
 
+- **0.3.0, selezione in modalità server:** la checkbox dell'intestazione e Ctrl/Cmd+A selezionano **solo le righe della pagina corrente** (lato server `rows` contiene solo la pagina). Le chiavi selezionate in altre pagine restano nella selezione e nel conteggio (chiavi orfane per costruzione): il componente non le pota da solo; `pruneSelection` è per chi ha tutti i dati. Anche lo stato indeterminato dell'intestazione va calcolato sulla pagina corrente.
+- I clic su elementi interattivi nelle celle (`a, button, input, select, textarea, [contenteditable], [role="button"]`) non attivano la selezione né l'intervallo con Maiusc; eccezione: la checkbox di selezione.
+
 ### Stile
 
 - Il CSS di default sta dentro `@layer vue-tabula`, con le variabili CSS di shadcn.

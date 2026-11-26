@@ -39,7 +39,7 @@ Con un `ref` al componente:
 
 ## Funzioni e tipi esportati
 
-`createDefaultState`, `DEFAULT_PAGE_SIZE`, `setColumnFilter`, `getCellValue`, `compareValues`, `sortIndices`, `toggleSort`, `globalSearchIndices`, `normalizeText`, `columnFilterIndices`, `isFilterActive`, `selectOptions`, `normalizeOptions`, `toggleKey`, `selectRange`, `selectKeys`, `deselectKeys`, `selectionState`, `createDebouncer`, `moveGridPosition`, `clampPosition`, `paginate`.
+`createDefaultState`, `DEFAULT_PAGE_SIZE`, `setColumnFilter`, `getCellValue`, `getRowKey`, `compareValues`, `sortIndices`, `toggleSort`, `globalSearchIndices`, `normalizeText`, `columnFilterIndices`, `isFilterActive`, `selectOptions`, `normalizeOptions`, `toggleKey`, `selectRange`, `selectKeys`, `deselectKeys`, `pruneSelection`, `selectionState`, `createDebouncer`, `moveGridPosition`, `clampPosition`, `paginate`.
 
 Tipi: `ColumnDef`, `TableState`, `SortEntry`, `SortDirection`, `RowKey`, `CellSlotProps`, `HeaderSlotProps`, `FilterSlotProps`, `FilterKind`, `FilterOption`, `FilterPrimitive`, `FilterValue`, `NumberRange`, `SelectionMode`, `SelectionState`, `GridPosition`, `GridBounds`, `Debouncer`, `TableClasses`, `TableLabels`, `PageInfo`.
 
