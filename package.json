@@ -1,0 +1,26 @@
+{
+  "name": "vue-tabula-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Monorepo di vue-tabula: libreria, documentazione e test.",
+  "type": "module",
+  "packageManager": "pnpm@12.23.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm -r --filter vue-tabula typecheck",
+    "test": "pnpm --filter vue-tabula test",
+    "build": "pnpm -r build",
+    "docs:dev": "pnpm --filter vue-tabula-docs dev"
+  },
+  "devDependencies": {
+    "eslint": "^10.15.0",
+    "eslint-plugin-vue": "^10.12.1",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.74.0"
+  }
+}

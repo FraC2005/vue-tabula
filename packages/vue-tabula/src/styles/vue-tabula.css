@@ -1,0 +1,43 @@
+/*
+ * Stili di default di vue-tabula.
+ * Tutto sta nel layer `vue-tabula`: qualsiasi regola fuori dal layer
+ * (Tailwind compreso) ha la precedenza senza bisogno di !important.
+ * I colori usano le variabili CSS di shadcn, con valori di ripiego.
+ */
+@layer vue-tabula {
+  .vt-root {
+    --vt-background: var(--background, #ffffff);
+    --vt-foreground: var(--foreground, #0a0a0a);
+    --vt-border: var(--border, #e5e5e5);
+    --vt-muted: var(--muted, #f5f5f5);
+
+    display: grid;
+    color: var(--vt-foreground);
+    background: var(--vt-background);
+    border: 1px solid var(--vt-border);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .vt-header,
+  .vt-body {
+    display: contents;
+  }
+
+  .vt-row {
+    display: flex;
+    border-bottom: 1px solid var(--vt-border);
+  }
+
+  .vt-header-cell {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    font-weight: 500;
+    background: var(--vt-muted);
+  }
+
+  .vt-cell {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+  }
+}

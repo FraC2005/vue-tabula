@@ -1,0 +1,69 @@
+{
+  "name": "vue-tabula",
+  "version": "0.0.0",
+  "description": "Componente tabella dati avanzato per Vue 3: ordinamento, filtri, paginazione, virtualizzazione e accessibilità ARIA grid.",
+  "keywords": [
+    "vue",
+    "vue3",
+    "table",
+    "data-table",
+    "datagrid",
+    "virtual-scroll",
+    "aria-grid",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "Francesco Chiaravalloti",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FraC2005/vue-tabula.git",
+    "directory": "packages/vue-tabula"
+  },
+  "bugs": {
+    "url": "https://github.com/FraC2005/vue-tabula/issues"
+  },
+  "homepage": "https://github.com/FraC2005/vue-tabula#readme",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./style.css": "./dist/style.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && vue-tsc -p tsconfig.build.json",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:browser": "vitest run --project browser",
+    "test:coverage": "vitest run --project unit --coverage"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.11",
+    "@vitest/browser": "^5.1.1",
+    "@vitest/browser-playwright": "^5.1.1",
+    "@vitest/coverage-v8": "^5.1.1",
+    "@vue/test-utils": "^2.6.0",
+    "happy-dom": "^21.0.4",
+    "playwright": "^1.65.1",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1",
+    "vue": "^3.5.0",
+    "vue-tsc": "^3.3.14"
+  }
+}
