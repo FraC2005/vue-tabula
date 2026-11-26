@@ -2,6 +2,8 @@
 
 Tabella dati avanzata per Vue 3, scritta da zero: **zero dipendenze a runtime**, TypeScript, tree-shakable, compatibile con SSR e accessibile (pattern ARIA `grid`).
 
+📖 [Documentazione ed esempi](https://frac2005.github.io/vue-tabula/)
+
 > Versione 0.x: l'API può cambiare tra versioni minori. Vedi il [CHANGELOG](https://github.com/FraC2005/vue-tabula/blob/main/CHANGELOG.md).
 
 ## Funzioni (0.1.0)

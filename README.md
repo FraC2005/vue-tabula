@@ -1,5 +1,11 @@
 # vue-tabula
 
+[![npm](https://img.shields.io/npm/v/vue-tabula)](https://www.npmjs.com/package/vue-tabula)
+[![CI](https://github.com/FraC2005/vue-tabula/actions/workflows/ci.yml/badge.svg)](https://github.com/FraC2005/vue-tabula/actions/workflows/ci.yml)
+[![licenza: MIT](https://img.shields.io/npm/l/vue-tabula)](./LICENSE)
+
+📖 **[Documentazione ed esempi](https://frac2005.github.io/vue-tabula/)**
+
 Componente tabella dati avanzato per Vue 3, scritto da zero, senza dipendenze a runtime.
 
 > Stato: 0.1.0 (MVP). L'API non è ancora stabile.

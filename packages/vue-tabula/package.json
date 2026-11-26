@@ -10,7 +10,16 @@
     "datagrid",
     "virtual-scroll",
     "aria-grid",
-    "typescript"
+    "typescript",
+    "vuejs",
+    "grid",
+    "sorting",
+    "pagination",
+    "accessible",
+    "a11y",
+    "ssr",
+    "nuxt",
+    "zero-dependencies"
   ],
   "license": "MIT",
   "author": "Francesco Chiaravalloti",
@@ -22,7 +31,7 @@
   "bugs": {
     "url": "https://github.com/FraC2005/vue-tabula/issues"
   },
-  "homepage": "https://github.com/FraC2005/vue-tabula#readme",
+  "homepage": "https://frac2005.github.io/vue-tabula/",
   "type": "module",
   "sideEffects": [
     "**/*.css"
