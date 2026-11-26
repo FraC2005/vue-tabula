@@ -1,6 +1,6 @@
 {
   "name": "vue-tabula",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Componente tabella dati avanzato per Vue 3: ordinamento, filtri, paginazione, virtualizzazione e accessibilità ARIA grid.",
   "keywords": [
     "vue",

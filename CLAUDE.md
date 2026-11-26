@@ -71,6 +71,12 @@ Funzioni del componente:
 - In modalità server la ricerca globale ha un debounce prima di emettere `request`.
 - Metodi esposti: `scrollToRow`, `resetState`, `getState`, `clearSelection`, `expandAll`/`collapseAll`, `focusCell`.
 
+- Import relativi nel sorgente con estensione `.js` (`'./core/sort.js'`), necessari perché i `.d.ts` si risolvano in node16/ESM. Lo script `packages/vue-tabula/scripts/fix-dts.mjs` (in coda a `build`) rinomina `*.vue.d.ts` in `*.d.ts` e riscrive gli specificatori `.vue`; si elimina quando vue-tsc non serve più l'aiuto (vedi il commento in testa al file).
+- `pnpm check:package` (publint + attw con `--profile esm-only`, escluso `./style.css`) usa `pnpm dlx`, senza dipendenze, e gira in CI dopo la build.
+- Il CSS è collegato al componente con `<style src>` (non con `import`, che finirebbe nei `.d.ts`).
+- Layout ARIA: `role="grid"` su un elemento interno (`.vt-grid`); toolbar e paginazione stanno fuori dal grid.
+- Testi dell'interfaccia in inglese di default, sostituibili con la prop `labels`. Le colonne sono ordinabili salvo `sortable: false`.
+
 ### Stile
 
 - Il CSS di default sta dentro `@layer vue-tabula`, con le variabili CSS di shadcn.

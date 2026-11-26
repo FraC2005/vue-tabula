@@ -1,0 +1,14 @@
+/*
+ * vue-tabula legge le variabili CSS di shadcn: qui le colleghiamo ai colori di VitePress,
+ * così la tabella segue anche il tema chiaro/scuro del sito.
+ */
+:root {
+  --background: var(--vp-c-bg);
+  --foreground: var(--vp-c-text-1);
+  --border: var(--vp-c-divider);
+  --muted: var(--vp-c-bg-soft);
+  --muted-foreground: var(--vp-c-text-2);
+  --accent: var(--vp-c-default-soft);
+  --primary: var(--vp-c-brand-1);
+  --ring: var(--vp-c-brand-1);
+}

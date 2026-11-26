@@ -52,3 +52,36 @@ export interface CellSlotProps<T> {
   column: ColumnDef<T>
   value: unknown
 }
+
+/** Props passate allo slot `header-<columnId>`. */
+export interface HeaderSlotProps<T> {
+  column: ColumnDef<T>
+}
+
+/** Classi CSS aggiuntive per le parti principali della tabella (si sommano a quelle di default). */
+export interface TableClasses {
+  root?: string
+  toolbar?: string
+  search?: string
+  header?: string
+  headerCell?: string
+  body?: string
+  row?: string
+  cell?: string
+  empty?: string
+  pagination?: string
+}
+
+/** Testi dell'interfaccia, sostituibili per la traduzione. */
+export interface TableLabels {
+  search: string
+  searchPlaceholder: string
+  empty: string
+  previousPage: string
+  nextPage: string
+  pageSize: string
+  /** Riepilogo letto dagli screen reader, es. "1–25 di 100". */
+  summary: (range: { start: number; end: number; total: number }) => string
+  /** Descrizione della pagina corrente, es. "Pagina 2 di 4". */
+  pageOf: (page: number, pageCount: number) => string
+}

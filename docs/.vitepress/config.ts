@@ -8,8 +8,23 @@ export default defineConfig({
   base: process.env.DOCS_BASE ?? '/',
   cleanUrls: true,
   themeConfig: {
-    nav: [{ text: 'Guida', link: '/guide/getting-started' }],
-    sidebar: [{ text: 'Guida', items: [{ text: 'Per iniziare', link: '/guide/getting-started' }] }],
+    nav: [
+      { text: 'Guida', link: '/guide/getting-started' },
+      { text: 'API', link: '/guide/api' },
+    ],
+    sidebar: [
+      {
+        text: 'Guida',
+        items: [
+          { text: 'Per iniziare', link: '/guide/getting-started' },
+          { text: 'Ordinamento, ricerca e pagine', link: '/guide/sorting-search-pagination' },
+          { text: 'Celle personalizzate', link: '/guide/slots' },
+          { text: 'Stile', link: '/guide/styling' },
+          { text: 'Accessibilità', link: '/guide/accessibility' },
+        ],
+      },
+      { text: 'Riferimento', items: [{ text: 'API', link: '/guide/api' }] },
+    ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/FraC2005/vue-tabula' }],
   },
 })

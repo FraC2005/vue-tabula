@@ -2,7 +2,9 @@
 
 Componente tabella dati avanzato per Vue 3, scritto da zero, senza dipendenze a runtime.
 
-> Stato: sviluppo iniziale (0.x). L'API non è ancora stabile.
+> Stato: 0.1.0 (MVP). L'API non è ancora stabile.
+
+Funzioni attuali: ordinamento multi-colonna, ricerca globale, paginazione lato client, slot per celle e intestazioni, stile con le variabili CSS di shadcn, ARIA `grid`. Installazione e uso: [README del pacchetto](./packages/vue-tabula/README.md).
 
 ## Struttura della repo
 
